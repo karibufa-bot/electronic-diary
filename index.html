@@ -348,7 +348,7 @@
   <div class="auth-card">
     <h1>📓 Электронный дневник</h1>
     <p class="subtitle">Войдите, чтобы продолжить работу</p>
-    <p class="subtitle">Облачный вход · тестовая версия, учебные данные пока локальные</p>
+    <p class="subtitle">Облачный дневник · проверка синхронизации</p>
     <form id="login30"><div class="field"><label>Логин</label><input id="loginName" required></div><div class="field"><label>Пароль</label><input id="loginPass" type="password" required></div><button class="btn btn-primary btn-block">Войти</button></form>
     <button class="btn btn-secondary btn-block" onclick="register30()">Регистрация по приглашению</button>
 
@@ -504,7 +504,7 @@ function load() {
     return loaded;
   } catch { return structuredClone(defaultData); }
 }
-function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function save() { const copy=structuredClone(data); if(data.user?.id&&!data.user.isDemo){copy.grades=[];copy.students=[];copy.homework=copy.homework.filter(h=>h.isExtra);copy.schedules={};copy.user=null;} localStorage.setItem(STORAGE_KEY, JSON.stringify(copy)); }
 
 function initSchedules() {
   if (!data.schedules || Object.keys(data.schedules).length === 0) {
@@ -619,7 +619,7 @@ function renderHome() {
   const now = d.getHours() * 60 + d.getMinutes();
   let nextLesson = null;
   for (const l of todayLessons) { const [h, m] = l.time.split(':').map(Number); if (h * 60 + m > now) { nextLesson = l; break; } }
-  document.getElementById('nextLessonBlock').innerHTML = nextLesson ? `<div class="next-lesson"><div class="nl-time">${nextLesson.time}</div><div class="nl-info"><div class="nl-subj">${nextLesson.subj}</div><div class="nl-room">каб. ${nextLesson.room}</div></div></div>` : `<div class="empty"><div class="ico">🌴</div>Сегодня уроков нет</div>`;
+  document.getElementById('nextLessonBlock').innerHTML = nextLesson ? `<div class="next-lesson"><div class="nl-time">${nextLesson.time}</div><div class="nl-info"><div class="nl-subj">${escapeHtml(nextLesson.subj)}</div><div class="nl-room">каб. ${escapeHtml(nextLesson.room)}</div></div></div>` : `<div class="empty"><div class="ico">🌴</div>Сегодня уроков нет</div>`;
   document.getElementById('quickActions').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
     <button class="btn btn-secondary" onclick="navigate('schedule')" style="justify-content:flex-start">📅 Открыть расписание</button>
     <button class="btn btn-secondary" onclick="navigate('homework')" style="justify-content:flex-start">📝 Посмотреть ДЗ</button>
@@ -643,7 +643,7 @@ function renderSchedule() {
     const lessons = schedule[day] || [];
     const dayExtras = extras[day] || [];
     const all = [...lessons.map(l => ({...l, isExtra: false})), ...dayExtras.map(l => ({...l, isExtra: true}))].sort((a,b) => a.time.localeCompare(b.time));
-    return `<div class="day-col"><h3>${dayNames[day]}</h3>${all.length ? all.map(l => `<div class="lesson ${l.isExtra?'extra':''}"><div class="time">${l.time}</div><div class="subj">${l.subj}</div><div class="room">каб. ${l.room}</div>${l.isExtra ? '<div class="tag">ДОП</div>' : ''}</div>`).join('') : '<div class="lesson-empty">Нет уроков</div>'}</div>`;
+    return `<div class="day-col"><h3>${dayNames[day]}</h3>${all.length ? all.map(l => `<div class="lesson ${l.isExtra?'extra':''}"><div class="time">${l.time}</div><div class="subj">${escapeHtml(l.subj)}</div><div class="room">каб. ${escapeHtml(l.room)}</div>${l.isExtra ? '<div class="tag">ДОП</div>' : ''}</div>`).join('') : '<div class="lesson-empty">Нет уроков</div>'}</div>`;
   }).join('');
 }
 
@@ -656,8 +656,8 @@ function openScheduleEditor() {
     data.schedules[cls][day].forEach((l, i) => {
       html += `<div style="display:grid;grid-template-columns:80px 1fr 80px 30px;gap:6px;margin-bottom:6px">
         <input value="${l.time}" data-day="${day}" data-i="${i}" data-f="time">
-        <input value="${l.subj}" data-day="${day}" data-i="${i}" data-f="subj">
-        <input value="${l.room}" data-day="${day}" data-i="${i}" data-f="room">
+        <input value="${escapeHtml(l.subj)}" data-day="${day}" data-i="${i}" data-f="subj">
+        <input value="${escapeHtml(l.room)}" data-day="${day}" data-i="${i}" data-f="room">
         <button class="icon-btn" onclick="removeLesson('${day}',${i})">✕</button></div>`;
     });
     html += `<button class="btn btn-secondary" onclick="addLesson('${day}')">+ Урок</button></div>`;
@@ -723,18 +723,18 @@ function renderGrades() {
  if(isTeacher()){
  html=`<div class="card" style="margin-bottom:12px"><label>Предмет</label><select onchange="journalSubject=this.value;renderGrades()">${subjects.map(x=>`<option ${x===journalSubject?'selected':''}>${escapeHtml(x)}</option>`).join('')}</select><button class="btn btn-secondary" onclick="viewSubjectGrades(journalSubject)">Управление оценками</button></div>`;
  }
- const rows=isTeacher()?data.students.filter(x=>x.class===cls).map(x=>row(x.name,grades.filter(g=>g.studentName===x.name&&g.subject===journalSubject),`<button class="btn btn-secondary" onclick="openGradeModal(${Number(x.id)})">+</button>`)):subjects.map(x=>row(x,grades.filter(g=>g.subject===x)));
+ const rows=isTeacher()?data.students.filter(x=>x.class===cls).map(x=>row(x.name,grades.filter(g=>(g.studentId ? g.studentId===x.uuid : g.studentName===x.name)&&g.subject===journalSubject),`<button class="btn btn-secondary" onclick="openGradeModal(${Number(x.id)})">+</button>`)):subjects.map(x=>row(x,grades.filter(g=>g.subject===x)));
  content.innerHTML=html+`<div class="card journal-scroll"><table><thead><tr><th>${isTeacher()?'Ученик':'Предмет'}</th><th>Оценки</th><th>Средний балл</th></tr></thead><tbody>${rows.join('')||'<tr><td colspan="3">Добавьте учеников в разделе «Ученики»</td></tr>'}</tbody></table></div>`;
 }
 
 function viewSubjectGrades(subject) {
   const cls = getCurrentClass();
   const list = data.grades.filter(g => g.subject === subject && g.studentClass === cls).sort((a,b)=>b.date.localeCompare(a.date));
-  let html = `<h3>${subject} — все оценки (${cls})</h3><div style="max-height:400px;overflow-y:auto">`;
+  let html = `<h3>${escapeHtml(subject)} — все оценки (${cls})</h3><div style="max-height:400px;overflow-y:auto">`;
   list.forEach(g => {
     html += `<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><strong>${g.studentName}</strong> <span style="color:var(--text-dim);font-size:12px">${g.studentClass||''}</span>
+        <div><strong>${escapeHtml(g.studentName)}</strong> <span style="color:var(--text-dim);font-size:12px">${g.studentClass||''}</span>
           <div style="font-size:12px;color:var(--text-dim)">${formatDate(g.date)}</div>
           ${g.comment?`<div class="comment-text">💬 ${escapeHtml(g.comment)}</div>`:''}</div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -783,9 +783,9 @@ function renderStudents() {
   const tbody = document.querySelector('#studentsTable tbody');
   if (!classStudents.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="ico">👥</div>Список учеников пуст</div></td></tr>`; return; }
   tbody.innerHTML = classStudents.map(s => {
-    const sg = data.grades.filter(g => g.studentName === s.name);
+    const sg = data.grades.filter(g => (g.studentId ? g.studentId===s.uuid : g.studentName === s.name));
     const avg = sg.length ? (sg.reduce((x,g)=>x+ +g.grade,0)/sg.length).toFixed(2) : '—';
-    return `<tr><td><strong>${s.name}</strong></td><td>${s.class}</td><td>${avg}</td><td>${sg.length}</td>
+    return `<tr><td><strong>${escapeHtml(s.name)}</strong></td><td>${s.class}</td><td>${avg}</td><td>${sg.length}</td>
       <td><button class="btn btn-secondary" onclick="quickGrade(${s.id})">+ Оценка</button><button class="icon-btn" onclick="deleteStudent(${s.id})">🗑</button></td></tr>`;
   }).join('');
 }
@@ -820,12 +820,12 @@ function renderHomework() {
 
 function renderHwSlot(time, subject, hw, day, slot, isExtra, today) {
   const doneByMe = hw ? isHwDoneByMe(hw.id) : false;
-  if (!hw) { const canAdd = isExtra ? canAddHwForExtra() : canAddHw(); return `<div class="hw-slot ${isExtra?'extra':''}" style="opacity:.5" ${canAdd?`onclick="openHwForSlot('${day}',${slot},'${subject.replace(/'/g,"\\'")}',${isExtra})"`:''}><div class="time">${time}</div><div class="hw-subj-name">${subject}</div><div class="hw-status">${canAdd ? '＋ Нажмите, чтобы добавить ДЗ' : 'Нет задания'}</div></div>`; }
+  if (!hw) { const canAdd = isExtra ? canAddHwForExtra() : canAddHw(); return `<div class="hw-slot ${isExtra?'extra':''}" style="opacity:.5" ${canAdd?`onclick="openHwForSlot('${day}',${slot},'',${isExtra})"`:''}><div class="time">${time}</div><div class="hw-subj-name">${escapeHtml(subject)}</div><div class="hw-status">${canAdd ? '＋ Нажмите, чтобы добавить ДЗ' : 'Нет задания'}</div></div>`; }
   const urgent = !doneByMe && hw.deadline <= today;
   const doneCount = (data.homeworkDone[hw.id] || []).length;
   return `<div class="hw-slot ${doneByMe?'done':''} ${isExtra?'extra':''}" onclick="toggleHw(${hw.id})">
     <div class="hw-check ${doneByMe?'checked':''}">${doneByMe?'✓':''}</div>
-    <div class="time">${time}</div><div class="hw-subj-name">${subject}</div>
+    <div class="time">${time}</div><div class="hw-subj-name">${escapeHtml(subject)}</div>
     <div class="hw-task-text">${escapeHtml(hw.task)}</div>
     <div class="hw-status ${urgent?'urgent':''}">📅 ${formatDate(hw.deadline)}${urgent?' · срочно!':''}${isTeacher() ? ` · выполнили: ${doneCount}` : ''}</div></div>`;
 }
@@ -833,10 +833,10 @@ function renderHwSlot(time, subject, hw, day, slot, isExtra, today) {
 function openHwForSlot(day, slot, subject, isExtra) {
   if (!(isExtra ? canAddHwForExtra() : canAddHw())) return;
   const cls = getCurrentClass();
-  openModal(`<h3>ДЗ для ${cls}: ${subject}</h3>
+  openModal(`<h3>ДЗ для ${cls}: ${escapeHtml(subject)}</h3>
     <div class="field"><label>Задание</label><textarea id="hTask" rows="3"></textarea></div>
     <div class="field"><label>Срок</label><input type="date" id="hDeadline" value="${new Date().toISOString().slice(0,10)}"></div>
-    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveHwForSlot('${day}',${slot},'${subject.replace(/'/g,"\\'")}',${isExtra})">Добавить</button></div>`);
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveHwForSlot('${day}',${slot},'',${isExtra})">Добавить</button></div>`);
 }
 
 function saveHwForSlot(day, slot, subject, isExtra) {
@@ -875,7 +875,7 @@ function openHwModal() {
 function updateHwSubjects() {
   const day = document.getElementById('hDay').value;
   const lessons = getCurrentSchedule()[day] || [];
-  document.getElementById('hSlot').innerHTML = lessons.map((l, i) => `<option value="${i}">${l.time} — ${l.subj}</option>`).join('') || '<option>Нет уроков</option>';
+  document.getElementById('hSlot').innerHTML = lessons.map((l, i) => `<option value="${i}">${l.time} — ${escapeHtml(l.subj)}</option>`).join('') || '<option>Нет уроков</option>';
 }
 
 function saveHwFromModal() {
@@ -990,13 +990,56 @@ async function cloudLogin(){
  if(error)return toast('Не удалось войти: '+error.message);
  const {data:p,error:pe}=await cloud.from('profiles').select('id,username,full_name,role,class_name,blocked').eq('id',sessionData.user.id).single();
  if(pe||!p||p.blocked||!['admin','teacher','student'].includes(p.role)){await cloud.auth.signOut();return toast('Профиль недоступен');}
- STORAGE_KEY='ediary_cloud_local_'+p.id;data=load();data.user={id:p.id,name:p.full_name,role:p.role==='admin'?'teacher':p.role,isAdmin:p.role==='admin',class:(p.class_name||'').replace(/A/g,'А').replace(/B/g,'Б').replace(/C/g,'В')};initSchedules();save();enterApp();
+ STORAGE_KEY='ediary_cloud_local_'+p.id;data=load();data.user={id:p.id,name:p.full_name,role:p.role==='admin'?'teacher':p.role,isAdmin:p.role==='admin',class:(p.class_name||'').replace(/A/g,'А').replace(/B/g,'Б').replace(/C/g,'В')};initSchedules();await refreshCloud();save();enterApp();
 }
 document.getElementById('login30').onsubmit=async e=>{e.preventDefault();try{await cloudLogin()}catch(e){toast('Ошибка подключения: '+e.message)}};
 redeem30=async function(){try{if(!cloud)return toast('Supabase недоступен');const username=document.getElementById('newLogin').value.trim().toLowerCase(),password=document.getElementById('newPass').value,code=document.getElementById('inviteCode').value.trim();const {data:r,error}=await cloud.functions.invoke('register-user',{body:{username,password,code}});if(error||!r?.success){let msg=r?.error||error?.message;try{msg=(await error.context.json()).error||msg}catch{}return toast(msg||'Ошибка регистрации')}closeModal();toast('Аккаунт создан. Войдите')}catch(e){toast(e.message)}};
 logout=async function(){if(!confirm('Выйти из аккаунта?'))return;await cloud?.auth.signOut();data.user=null;save();location.reload()};
 data.user=null;
 
+
+
+const online=()=>!!data.user?.id&&!data.user.isDemo;
+const clsUI=x=>String(x||'').replace(/A/g,'А').replace(/B/g,'Б').replace(/C/g,'В');
+const clsDB=x=>x.replace('А','A').replace('Б','B').replace('В','C');
+const handles=new Map(); let handleCounter=100;
+function handle(id){if(!handles.has(id))handles.set(id,++handleCounter);return handles.get(id)}
+async function checked(q){const {data:r,error}=await q;if(error)throw Error(error.message);return r;}
+async function refreshCloud(){
+ const [ps,gs,hs,ss]=await Promise.all(['profiles','grades','homework','schedule'].map(t=>checked(cloud.from(t).select('*'))));
+ const students=ps.filter(p=>p.role==='student'&&!p.blocked);
+ data.students=students.map(p=>({id:handle(p.id),uuid:p.id,name:p.full_name,class:clsUI(p.class_name)}));
+ data.grades=gs.map(g=>{const p=students.find(p=>p.id===g.student_id);return {id:handle(g.id),uuid:g.id,studentId:g.student_id,studentName:p?.full_name||data.user.name,studentClass:clsUI(p?.class_name||data.user.class),subject:g.subject,grade:g.grade,date:g.grade_date,comment:g.comment||''}});
+ data.homework=[...data.homework.filter(h=>h.isExtra),...hs.filter(h=>h.weekday>=1&&h.weekday<=5&&h.lesson_number>=1).map(h=>({id:handle(h.id),uuid:h.id,day:dayKeys[h.weekday-1],slot:h.lesson_number-1,subject:h.subject,task:h.description,deadline:h.due_date,class:clsUI(h.class_name),isExtra:false,teacherId:h.teacher_id}))];
+ data.schedules={};for(const c of AVAILABLE_CLASSES){const rows=ss.filter(r=>clsUI(r.class_name)===c);data.schedules[c]=rows.length?Object.fromEntries(dayKeys.map((d,i)=>[d,rows.filter(r=>r.weekday===i+1).sort((a,b)=>a.lesson_number-b.lesson_number).map(r=>({time:String(r.lesson_time||'08:30').slice(0,5),subj:r.subject,room:r.room||'—'}))])):structuredClone(CLASS_SCHEDULES[c]);}
+}
+async function action(fn){try{await fn();await refreshCloud();save();closeModal();navigate(document.querySelector('.page.active').id.slice(5));toast('Сохранено в облаке')}catch(e){toast('Ошибка облака: '+e.message)}}
+const oldGrade=saveGrade;saveGrade=function(){if(!online())return oldGrade();if(data.user.isAdmin)return toast('Оценки выставляет учитель');const p=data.students.find(s=>s.id===+document.getElementById('gStudent').value);if(!p)return;return action(()=>checked(cloud.from('grades').insert({student_id:p.uuid,teacher_id:data.user.id,subject:document.getElementById('gSubject').value,grade:+document.getElementById('gGrade').value,grade_date:document.getElementById('gDate').value,comment:document.getElementById('gComment').value})));};
+const oldDelete=deleteGrade;deleteGrade=function(id){if(!online())return oldDelete(id);const g=data.grades.find(g=>g.id===id);if(g&&confirm('Удалить оценку?'))return action(async()=>{const r=await checked(cloud.from('grades').delete().eq('id',g.uuid).select('id'));if(!r.length)throw Error('Нет разрешения на удаление')});};
+const oldSlot=openHwForSlot;openHwForSlot=function(day,slot,subject,extra){return oldSlot(day,slot,(extra?getCurrentExtraLessons():getCurrentSchedule())[day]?.[slot]?.subj||subject,extra)};
+const oldHw=saveHwForSlot;saveHwForSlot=function(day,slot,subject,extra){if(!online()||extra)return oldHw(day,slot,subject,extra);if(!canAddHw())return;subject=getCurrentSchedule()[day]?.[slot]?.subj;if(!subject)return toast('Нет урока');const task=document.getElementById('hTask').value.trim(),deadline=document.getElementById('hDeadline').value;if(!task||!deadline)return toast('Заполните задание и срок');return action(()=>checked(cloud.from('homework').insert({class_name:clsDB(getCurrentClass()),subject,description:task,due_date:deadline,teacher_id:data.user.id,weekday:dayKeys.indexOf(day)+1,lesson_number:slot+1})));};
+const oldHwModal=saveHwFromModal;saveHwFromModal=function(){if(!online())return oldHwModal();return saveHwForSlot(document.getElementById('hDay').value,+document.getElementById('hSlot').value,'',false)};
+const oldSched=saveSchedule;saveSchedule=function(){if(!online())return oldSched();toast('Облачное редактирование расписания пока отключено')};
+const oldCan=canEditSchedule;canEditSchedule=()=>!online()&&oldCan();
+const oldOpenGrade=openGradeModal;openGradeModal=function(id){if(online()&&data.user.isAdmin)return toast('Оценки выставляет учитель');return oldOpenGrade(id)};
+openStudentModal=()=>toast('Ученики добавляются через регистрацию по приглашению');deleteStudent=()=>toast('Удаление аккаунтов пока отключено');
+const oldDemo=enterDemo;enterDemo=function(){STORAGE_KEY='ediary_cloud_demo';data=load();return oldDemo()};
+const refreshButton=document.createElement('button');refreshButton.textContent='↻ Обновить';refreshButton.onclick=async()=>{if(!online())return;try{await refreshCloud();navigate(document.querySelector('.page.active').id.slice(5));toast('Данные обновлены')}catch(e){toast(e.message)}};document.querySelector('.fixed-actions').prepend(refreshButton);
+
+
+pages.accounts={title:'🔑 Аккаунты',icon:'🔑',roles:['teacher']};
+let adminProfiles=[];
+accounts30=async function(){
+ if(!data.user?.isAdmin)return;
+ ap.innerHTML=`<h2>Управление аккаунтами</h2><div class="card"><label>Роль</label><select id="invRole" onchange="inviteFields30()"><option value="student">Ученик</option><option value="teacher">Учитель</option><option value="parent">Родитель</option></select><label>Фамилия и имя</label><input id="invName"><div id="invFields"></div><button class="btn btn-primary" id="issueCode" onclick="invite30()">Создать код</button><div id="codeResult"></div></div><div class="card" id="inviteList">Загрузка приглашений…</div><div class="card" id="profileList">Загрузка аккаунтов…</div>`;
+ inviteFields30();
+ try{adminProfiles=await checked(cloud.from('profiles').select('id,username,full_name,role,class_name,blocked').order('full_name'));if(!document.getElementById('profileList'))return;inviteFields30();document.getElementById('profileList').innerHTML='<h3>Аккаунты</h3>'+adminProfiles.map(p=>`<p>${escapeHtml(p.full_name)} · ${escapeHtml(roleLabels[p.role]||p.role)} · ${escapeHtml(p.username)} · ${p.blocked?'Заблокирован':'Активен'}</p>`).join('');}catch(e){document.getElementById('profileList').textContent=e.message;}
+ await loadInvites33();
+};
+inviteFields30=function(){const role=document.getElementById('invRole').value;document.getElementById('invFields').innerHTML=role==='student'?'<label>Класс</label><select id="invClass">'+AVAILABLE_CLASSES.map(c=>`<option>${c}</option>`).join('')+'</select>':role==='parent'?'<label>Ребёнок</label><select id="invChild">'+adminProfiles.filter(p=>p.role==='student'&&!p.blocked).map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.full_name)} · ${escapeHtml(clsUI(p.class_name))}</option>`).join('')+'</select>':'';};
+async function loadInvites33(){const el=document.getElementById('inviteList');if(!el)return;try{const rows=await checked(cloud.from('invitations').select('id,role,full_name,class_name,used,expires_at').order('expires_at',{ascending:false}));el.innerHTML='<h3>Приглашения</h3>'+(rows.map(i=>`<p>${escapeHtml(i.full_name)} · ${escapeHtml(roleLabels[i.role]||i.role)} · ${i.used?'Использован':i.expires_at&&new Date(i.expires_at)<=new Date()?'Истёк':'Действует'}</p>`).join('')||'Нет приглашений');}catch(e){el.textContent='Список приглашений недоступен: '+e.message;}}
+invite30=async function(){if(!data.user?.isAdmin)return;const role=document.getElementById('invRole').value,name=document.getElementById('invName').value.trim(),cls=document.getElementById('invClass')?.value,child=document.getElementById('invChild')?.value;if(!name||(role==='parent'&&!child))return toast('Заполните поля');const b=document.getElementById('issueCode');b.disabled=true;try{const code=await checked(cloud.rpc('create_invitation',{p_role:role,p_full_name:name,p_class_name:cls?clsDB(cls):null,p_student_id:child||null}));document.getElementById('codeResult').innerHTML=`<p>Сохраните одноразовый код: повторно он не показывается.</p><input id="issuedCode" readonly value="${escapeHtml(code)}" onclick="this.select()"><button class="btn btn-secondary" onclick="copyCode33()">Копировать</button>`;await loadInvites33();}catch(e){toast('Ошибка: '+e.message)}finally{b.disabled=false}};
+async function copyCode33(){const el=document.getElementById('issuedCode');try{await navigator.clipboard.writeText(el.value);toast('Код скопирован')}catch{el.select();toast('Выделите и скопируйте код')}}
 
 </script>
 </body>
