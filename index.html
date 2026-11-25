@@ -985,7 +985,8 @@ const cloud = window.supabase?.createClient('https://syhyxaooeozhsbjilgjn.supaba
 delete pages.accounts;
 async function cloudLogin(){
  if(!cloud) return toast('Не удалось загрузить Supabase');
- const {data:sessionData,error}=await cloud.auth.signInWithPassword({email:document.getElementById('loginName').value.trim().toLowerCase()+'@diary.invalid',password:document.getElementById('loginPass').value});
+ const login=document.getElementById('loginName').value.trim().toLowerCase();
+ const {data:sessionData,error}=await cloud.auth.signInWithPassword({email:(login==='admin'?'karibufa@gmail.com':login.includes('@')?login:login+'@diary.invalid'),password:document.getElementById('loginPass').value});
  if(error)return toast('Не удалось войти: '+error.message);
  const {data:p,error:pe}=await cloud.from('profiles').select('id,username,full_name,role,class_name,blocked').eq('id',sessionData.user.id).single();
  if(pe||!p||p.blocked||!['admin','teacher','student'].includes(p.role)){await cloud.auth.signOut();return toast('Профиль недоступен');}
