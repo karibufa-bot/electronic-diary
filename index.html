@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Электронный дневник</title>
+
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ЭД">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f6f8; --surface: #ffffff; --surface-2: #fafbfc;
+    --text: #1f2937; --text-dim: #6b7280; --border: #e5e7eb;
+    --accent: #4f46e5; --accent-soft: #eef2ff;
+    --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+    --extra: #f97316; --extra-soft: #fff7ed;
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  }
+  [data-theme="dark"] {
+    --bg: #0f172a; --surface: #1e293b; --surface-2: #273449;
+    --text: #f1f5f9; --text-dim: #94a3b8; --border: #334155;
+    --accent: #818cf8; --accent-soft: #1e1b4b;
+    --extra: #fb923c; --extra-soft: #431407;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3); --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    font-size: 15px; line-height: 1.5; transition: background .2s, color .2s;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, select, textarea {
+    font-family: inherit; font-size: 14px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--surface); color: var(--text); width: 100%;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
+
+  .auth-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .auth-card {
+    background: var(--surface); border-radius: 16px; padding: 40px;
+    box-shadow: var(--shadow-lg); max-width: 440px; width: 100%;
+  }
+  .auth-card h1 { font-size: 24px; margin-bottom: 8px; }
+  .auth-card .subtitle { color: var(--text-dim); margin-bottom: 28px; font-size: 14px; }
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .role-btn {
+    padding: 20px 16px; border: 2px solid var(--border); border-radius: 12px;
+    background: var(--surface); transition: all .15s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .role-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .role-btn.active { border-color: var(--accent); background: var(--accent-soft); }
+  .role-btn .icon { font-size: 28px; }
+  .role-btn .label { font-weight: 600; font-size: 14px; }
+  .role-btn .desc { font-size: 12px; color: var(--text-dim); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  .auth-form .field { margin-bottom: 14px; }
+  .btn {
+    padding: 10px 18px; border-radius: 8px; font-weight: 500; font-size: 14px;
+    transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .btn-demo {
+    background: linear-gradient(135deg, #f59e0b, #ef4444); color: white;
+    width: 100%; justify-content: center; margin-top: 10px;
+    padding: 14px 18px; font-size: 15px; font-weight: 600;
+  }
+  .btn-block { width: 100%; justify-content: center; }
+  .back-link { display: inline-block; margin-top: 12px; color: var(--text-dim); font-size: 13px; }
+  .back-link:hover { color: var(--accent); }
+
+  .app { display: none; min-height: 100vh; }
+  .app.active { display: flex; }
+  .sidebar {
+    width: 240px; background: var(--surface); border-right: 1px solid var(--border);
+    padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .sidebar-brand {
+    padding: 0 20px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-brand .logo {
+    width: 36px; height: 36px; background: var(--accent); border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; color: white; font-weight: 700;
+  }
+  .sidebar-brand .name { font-weight: 600; font-size: 15px; }
+  .sidebar-brand .role { font-size: 12px; color: var(--text-dim); }
+  .nav { padding: 16px 12px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px; color: var(--text-dim);
+    font-size: 14px; font-weight: 500; margin-bottom: 2px;
+    transition: all .15s; cursor: pointer; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: var(--surface-2); color: var(--text); }
+  .nav-item.active { background: var(--accent-soft); color: var(--accent); }
+  .nav-item .ico { width: 20px; text-align: center; }
+  .sidebar-footer { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+  .icon-btn { padding: 8px; border-radius: 8px; color: var(--text-dim); transition: all .15s; }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+
+  .main { margin-left: 240px; flex: 1; padding: 32px; max-width: 1280px; }
+  .page-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+  }
+  .page-header h2 { font-size: 22px; font-weight: 600; }
+  .page-header .sub { color: var(--text-dim); font-size: 14px; margin-top: 2px; }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fade .2s; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; box-shadow: var(--shadow);
+  }
+  .card-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px; box-shadow: var(--shadow);
+  }
+  .stat .label { font-size: 13px; color: var(--text-dim); margin-bottom: 6px; }
+  .stat .value { font-size: 26px; font-weight: 700; }
+  .stat .hint { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-weight: 600; color: var(--text-dim); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface-2); }
+
+  .grade-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 32px; height: 32px; padding: 0 8px;
+    border-radius: 8px; font-weight: 600; font-size: 14px; margin: 2px;
+  }
+  .grade-5 { background: #d1fae5; color: #065f46; }
+  .grade-4 { background: #dbeafe; color: #1e40af; }
+  .grade-3 { background: #fef3c7; color: #92400e; }
+  .grade-2 { background: #fee2e2; color: #991b1b; }
+  [data-theme="dark"] .grade-5 { background: #064e3b; color: #a7f3d0; }
+  [data-theme="dark"] .grade-4 { background: #1e3a8a; color: #bfdbfe; }
+  [data-theme="dark"] .grade-3 { background: #78350f; color: #fde68a; }
+  [data-theme="dark"] .grade-2 { background: #7f1d1d; color: #fecaca; }
+
+  .comment-text { font-size: 12px; color: var(--text-dim); font-style: italic; margin-top: 4px; }
+
+  .schedule-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .schedule-grid { grid-template-columns: 1fr; } }
+  .day-col {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; box-shadow: var(--shadow);
+  }
+  .day-col h3 { font-size: 14px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .lesson {
+    padding: 10px; border-radius: 8px; background: var(--surface-2);
+    margin-bottom: 8px; font-size: 13px; border-left: 3px solid var(--accent);
+  }
+  .lesson.extra { background: var(--extra-soft); border-left-color: var(--extra); }
+  .lesson .time { color: var(--text-dim); font-size: 11px; margin-bottom: 2px; }
+  .lesson .subj { font-weight: 500; }
+  .lesson .room { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+  .lesson .tag {
+    display: inline-block; font-size: 10px; padding: 2px 6px;
+    background: var(--extra); color: white; border-radius: 4px;
+    margin-top: 4px; font-weight: 600;
+  }
+  .lesson-empty { color: var(--text-dim); font-size: 12px; text-align: center; padding: 20px 0; }
+
+  .hw-slot {
+    padding: 10px; border-radius: 8px; background: var(--surface-2);
+    margin-bottom: 8px; font-size: 13px; border-left: 3px solid var(--accent);
+    cursor: pointer; transition: all .15s; position: relative; padding-right: 32px;
+  }
+  .hw-slot:hover { background: var(--accent-soft); }
+  .hw-slot.extra { background: var(--extra-soft); border-left-color: var(--extra); }
+  .hw-slot.done { opacity: .55; }
+  .hw-slot.done .hw-task-text { text-decoration: line-through; }
+  .hw-slot .time { color: var(--text-dim); font-size: 11px; margin-bottom: 2px; }
+  .hw-slot .hw-subj-name { font-weight: 600; text-transform: uppercase; font-size: 11px; color: var(--accent); letter-spacing: .5px; }
+  .hw-slot.extra .hw-subj-name { color: var(--extra); }
+  .hw-slot .hw-task-text { margin: 4px 0; font-size: 13px; font-weight: 500; }
+  .hw-slot .hw-status { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+  .hw-slot .hw-status.urgent { color: var(--danger); font-weight: 600; }
+  .hw-slot .hw-check {
+    position: absolute; top: 8px; right: 8px;
+    width: 20px; height: 20px; border: 2px solid var(--border);
+    border-radius: 5px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface); cursor: pointer; font-size: 12px;
+  }
+  .hw-slot .hw-check.checked { background: var(--success); border-color: var(--success); color: white; }
+
+  .ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .ach {
+    padding: 18px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--surface); text-align: center; transition: all .2s;
+  }
+  .ach.unlocked { border-color: var(--accent); background: var(--accent-soft); }
+  .ach.locked { opacity: .5; }
+  .ach .ach-ico { font-size: 32px; margin-bottom: 8px; }
+  .ach .ach-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .ach .ach-desc { font-size: 12px; color: var(--text-dim); }
+
+  .pomo-card { text-align: center; padding: 40px 20px; }
+  .pomo-time { font-size: 72px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 20px 0; color: var(--accent); }
+  .pomo-controls { display: flex; gap: 10px; justify-content: center; }
+  .pomo-stats { display: flex; gap: 24px; justify-content: center; margin-top: 30px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .pomo-stat .n { font-size: 24px; font-weight: 700; }
+  .pomo-stat .l { font-size: 12px; color: var(--text-dim); }
+
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-bg.active { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 14px; padding: 24px;
+    max-width: 480px; width: 100%; box-shadow: var(--shadow-lg);
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 { margin-bottom: 16px; font-size: 18px; }
+  .modal .field { margin-bottom: 14px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--text-dim); }
+  .empty .ico { font-size: 40px; margin-bottom: 10px; opacity: .5; }
+
+  .next-lesson {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px; background: var(--accent-soft); border-radius: 10px;
+    border-left: 4px solid var(--accent);
+  }
+  .next-lesson .nl-time { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .next-lesson .nl-info { flex: 1; }
+  .next-lesson .nl-subj { font-weight: 600; }
+  .next-lesson .nl-room { font-size: 12px; color: var(--text-dim); }
+
+  .legend { display: flex; gap: 20px; margin-bottom: 16px; font-size: 13px; color: var(--text-dim); flex-wrap: wrap; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { border-radius: 3px; flex-shrink: 0; display: inline-block; }
+  .legend-dot.primary-dot {
+    width: 10px !important; height: 10px !important;
+    min-width: 10px !important; min-height: 10px !important;
+    max-width: 10px !important; max-height: 10px !important;
+    background: var(--accent);
+  }
+  .legend-dot.extra {
+    width: 18px !important; height: 18px !important;
+    min-width: 18px !important; min-height: 18px !important;
+    max-width: 18px !important; max-height: 18px !important;
+    background: var(--extra);
+  }
+
+  .demo-banner {
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
+    border: 1px solid var(--warning);
+    padding: 8px 14px; border-radius: 8px; font-size: 12px;
+    color: #92400e; margin-bottom: 16px; font-weight: 500;
+  }
+
+  .class-selector { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .class-btn {
+    padding: 8px 16px; border-radius: 8px; border: 2px solid var(--border);
+    background: var(--surface); font-weight: 600; font-size: 14px; transition: all .15s;
+  }
+  .class-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .class-btn.active { border-color: var(--accent); background: var(--accent); color: white; }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      width: 100%; height: auto; position: static;
+      flex-direction: row; padding: 10px; border-right: none; border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+    }
+    .sidebar-brand, .sidebar-footer { display: none; }
+    .nav { display: flex; padding: 0; gap: 4px; }
+    .nav-item { white-space: nowrap; padding: 8px 12px; margin: 0; }
+    .app.active { flex-direction: column; }
+    .main { margin-left: 0; padding: 20px; }
+    .schedule-grid { grid-template-columns: 1fr; }
+    .pomo-time { font-size: 56px; }
+  }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--text); color: var(--surface);
+    padding: 12px 18px; border-radius: 10px;
+    box-shadow: var(--shadow-lg); font-size: 14px;
+    transform: translateY(100px); opacity: 0; transition: all .3s;
+    z-index: 200;
+  }
+  .toast.show { transform: none; opacity: 1; }
+@media(max-width:768px){.sidebar{flex-wrap:wrap}.sidebar-footer{display:flex;width:100%;padding:4px}.main{min-width:0;overflow:auto}}
+
+.app.active { width:100%; min-width:0; }
+.main { min-width:0; width:calc(100% - 240px); padding-bottom:110px; }
+.card { min-width:0; overflow-x:auto; }
+.sidebar { height:100vh; height:100dvh; }
+.fixed-actions { position:fixed; right:12px; bottom:calc(12px + env(safe-area-inset-bottom, 0px)); z-index:90; display:flex; gap:6px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-lg); max-width:calc(100% - 24px); }
+.fixed-actions button { display:flex; align-items:center; justify-content:center; gap:5px; padding:10px; min-height:44px; border-radius:8px; background:var(--surface-2); font-size:13px; }
+.toast { bottom:90px; }
+@media(max-width:768px){ .sidebar{height:auto;flex-wrap:nowrap;} .main{width:100%;padding-bottom:110px;} }
+@media(max-width:360px){ .fixed-actions button{padding:8px;font-size:12px;} }
+
+.main {min-width:0; width:calc(100% - 240px); flex:1 1 auto; padding-bottom:100px;}
+.page-header {position:static; width:100%; min-width:0;}
+.card,.day-col,.stat {min-width:0; overflow-wrap:anywhere;}
+.journal-scroll {overflow-x:auto;}
+.journal-scroll table {table-layout:fixed;width:100%;min-width:300px;}
+.journal-scroll th:first-child,.journal-scroll td:first-child {width:28%;overflow-wrap:break-word;word-break:normal;}
+.journal-scroll th:last-child,.journal-scroll td:last-child {width:100px;text-align:right;overflow-wrap:normal;}
+.journal-scroll td {vertical-align:top;}
+.journal-marks {white-space:normal;}
+.journal-mark-grid {display:flex;flex-wrap:wrap;gap:6px;max-width:374px;align-items:center;}
+.journal-mark-grid .grade-badge {margin:0;flex:0 0 32px;padding:0;}
+.journal-mark-grid .btn {flex:0 0 auto;padding:6px 10px;}
+@media(max-width:600px){.journal-scroll th,.journal-scroll td{padding:8px 5px;}.journal-scroll th:last-child,.journal-scroll td:last-child{width:68px;}.journal-scroll th:first-child,.journal-scroll td:first-child{width:32%;}}
+@media(max-width:768px){.main{width:100%;margin-left:0;}}
+</style>
+</head>
+<body>
+
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <h1>📓 Электронный дневник</h1>
+    <p class="subtitle">Войдите, чтобы продолжить работу</p>
+    <p class="subtitle">Облачный вход · тестовая версия, учебные данные пока локальные</p>
+    <form id="login30"><div class="field"><label>Логин</label><input id="loginName" required></div><div class="field"><label>Пароль</label><input id="loginPass" type="password" required></div><button class="btn btn-primary btn-block">Войти</button></form>
+    <button class="btn btn-secondary btn-block" onclick="register30()">Регистрация по приглашению</button>
+
+
+    <button class="btn btn-demo" onclick="enterDemo()">Демо-режим ученика</button>
+  </div>
+</div>
+
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">ЭД</div>
+      <div><div class="name" id="userName">—</div><div class="role" id="userRole">—</div></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+  </aside>
+  <div class="fixed-actions" aria-label="Настройки дневника">
+    <button onclick="toggleTheme()" title="Тема">🌓 <span>Тема</span></button>
+    <button onclick="exportData()" title="Экспорт">💾 <span>Экспорт</span></button>
+    <button onclick="logout()" title="Выход">🚪 <span>Выход</span></button>
+  </div>
+  <main class="main">
+    <section class="page" id="page-home">
+      <div class="page-header"><div><h2 id="greeting">Добро пожаловать</h2><div class="sub" id="todayDate"></div></div></div>
+      <div id="demoBanner" class="demo-banner" style="display:none">⚠️ Это демонстрационный режим. Все данные — пример.</div>
+      <div id="teacherClassSelector" class="class-selector" style="display:none"></div>
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">📌 Ближайший урок</div><div id="nextLessonBlock"></div></div>
+        <div class="card"><div class="card-title">⚡ Быстрые действия</div><div id="quickActions"></div></div>
+      </div>
+    </section>
+
+    <section class="page" id="page-schedule">
+      <div class="page-header">
+        <div><h2>📅 Расписание</h2><div class="sub" id="scheduleSub">Недельное расписание уроков</div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-secondary" id="editScheduleBtn" onclick="openScheduleEditor()" style="display:none">✏️ Редактировать</button>
+          <button class="btn btn-secondary" id="addExtraBtn" onclick="openExtraLessonModal()" style="display:none">+ Доп. занятие</button>
+        </div>
+      </div>
+      <div id="teacherScheduleSelector" class="class-selector" style="display:none"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot primary-dot"></div>Основное расписание</div>
+        <div class="legend-item"><div class="legend-dot extra"></div>Дополнительные занятия</div>
+      </div>
+      <div class="schedule-grid" id="scheduleGrid"></div>
+    </section>
+
+    <section class="page" id="page-grades">
+      <div class="page-header">
+        <div><h2>📈 Оценки</h2><div class="sub" id="gradesSub">Успеваемость по предметам</div></div>
+        <button class="btn btn-primary" id="addGradeBtn" onclick="openGradeModal()" style="display:none">+ Поставить оценку</button>
+      </div>
+      <div id="teacherGradesSelector" class="class-selector" style="display:none"></div>
+      <div id="gradesContent"></div>
+    </section>
+
+    <section class="page" id="page-students">
+      <div class="page-header">
+        <div><h2>👥 Ученики</h2><div class="sub">Список класса</div></div>
+        <button class="btn btn-primary" onclick="openStudentModal()">+ Добавить ученика</button>
+      </div>
+      <div id="teacherStudentsSelector" class="class-selector" style="display:none"></div>
+      <div class="card"><table id="studentsTable"><thead><tr><th>Имя</th><th>Класс</th><th>Средний балл</th><th>Оценок</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <section class="page" id="page-homework">
+      <div class="page-header">
+        <div><h2>📝 Домашние задания</h2><div class="sub" id="hwSub">Синхронизировано с расписанием</div></div>
+        <button class="btn btn-primary" id="addHwBtn" onclick="openHwModal()" style="display:none">+ Добавить задание</button>
+      </div>
+      <div id="teacherHwSelector" class="class-selector" style="display:none"></div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot primary-dot"></div>По основному расписанию</div>
+        <div class="legend-item"><div class="legend-dot extra"></div>По доп. занятиям</div>
+      </div>
+      <div class="schedule-grid" id="hwGrid"></div>
+    </section>
+
+    <section class="page" id="page-achievements">
+      <div class="page-header"><div><h2>🏆 Достижения</h2><div class="sub">Ваши успехи</div></div></div>
+      <div class="ach-grid" id="achGrid"></div>
+    </section>
+
+    <section class="page" id="page-pomodoro">
+      <div class="page-header"><div><h2>⏱ Таймер учёбы</h2><div class="sub">Метод Помодоро — 25 минут работы, 5 минут отдыха</div></div></div>
+      <div class="card pomo-card">
+        <div class="pomo-time" id="pomoTime">25:00</div>
+        <div class="pomo-controls">
+          <button class="btn btn-primary" onclick="pomoStart()">▶ Старт</button>
+          <button class="btn btn-secondary" onclick="pomoPause()">⏸ Пауза</button>
+          <button class="btn btn-secondary" onclick="pomoReset()">↺ Сброс</button>
+        </div>
+        <div class="pomo-stats">
+          <div class="pomo-stat"><div class="n" id="pomoSessions">0</div><div class="l">сессий сегодня</div></div>
+          <div class="pomo-stat"><div class="n" id="pomoMinutes">0</div><div class="l">минут всего</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const CLASS_SCHEDULES = {
+  '9А': {
+    monday:    [{time:'08:30', subj:'Математика', room:'204'},{time:'09:25', subj:'Русский язык', room:'112'},{time:'10:20', subj:'История', room:'305'},{time:'11:15', subj:'Физика', room:'210'},{time:'12:10', subj:'Английский', room:'118'},{time:'13:05', subj:'ОБЖ', room:'301'}],
+    tuesday:   [{time:'08:30', subj:'Литература', room:'112'},{time:'09:25', subj:'Биология', room:'220'},{time:'10:20', subj:'Алгебра', room:'204'},{time:'11:15', subj:'География', room:'208'},{time:'12:10', subj:'Физкультура', room:'спортзал'},{time:'13:05', subj:'Информатика', room:'301'}],
+    wednesday: [{time:'08:30', subj:'Химия', room:'215'},{time:'09:25', subj:'Русский язык', room:'112'},{time:'10:20', subj:'Обществознание', room:'305'},{time:'11:15', subj:'Геометрия', room:'204'},{time:'12:10', subj:'Английский', room:'118'},{time:'13:05', subj:'Литература', room:'112'}],
+    thursday:  [{time:'08:30', subj:'Физика', room:'210'},{time:'09:25', subj:'Математика', room:'204'},{time:'10:20', subj:'История', room:'305'},{time:'11:15', subj:'Биология', room:'220'},{time:'12:10', subj:'Русский язык', room:'112'},{time:'13:05', subj:'Технология', room:'мастерская'}],
+    friday:    [{time:'08:30', subj:'Английский', room:'118'},{time:'09:25', subj:'Алгебра', room:'204'},{time:'10:20', subj:'География', room:'208'},{time:'11:15', subj:'Литература', room:'112'},{time:'12:10', subj:'Физкультура', room:'спортзал'},{time:'13:05', subj:'ОБЖ', room:'301'}]
+  },
+  '9Б': {
+    monday:    [{time:'08:30', subj:'География', room:'208'},{time:'09:25', subj:'Алгебра', room:'204'},{time:'10:20', subj:'Английский язык', room:'118'},{time:'11:15', subj:'Химия', room:'215'},{time:'12:10', subj:'Русский язык', room:'112'},{time:'13:05', subj:'Литература', room:'112'}],
+    tuesday:   [{time:'08:30', subj:'История', room:'305'},{time:'09:25', subj:'Обществознание', room:'305'},{time:'10:20', subj:'Биология', room:'220'},{time:'11:15', subj:'Геометрия', room:'204'},{time:'12:10', subj:'Вероятность и статистика', room:'204'},{time:'13:05', subj:'Русский язык', room:'112'},{time:'14:00', subj:'Русский язык', room:'112'}],
+    wednesday: [{time:'08:30', subj:'Химия', room:'215'},{time:'09:25', subj:'Черчение', room:'302'},{time:'10:20', subj:'Английский язык', room:'118'},{time:'11:15', subj:'Английский язык', room:'118'},{time:'12:10', subj:'Физика', room:'210'},{time:'13:05', subj:'Русский язык', room:'112'}],
+    thursday:  [{time:'08:30', subj:'Алгебра', room:'204'},{time:'09:25', subj:'Алгебра', room:'204'},{time:'10:20', subj:'История', room:'305'},{time:'11:15', subj:'Основы безопасности и защиты Родины', room:'301'},{time:'12:10', subj:'Физическая культура', room:'спортзал'},{time:'13:05', subj:'Литература', room:'112'},{time:'14:00', subj:'Литература', room:'112'}],
+    friday:    [{time:'08:30', subj:'Физика', room:'210'},{time:'09:25', subj:'Физика', room:'210'},{time:'10:20', subj:'Геометрия', room:'204'},{time:'11:15', subj:'Биология', room:'220'},{time:'12:10', subj:'География', room:'208'},{time:'13:05', subj:'Информатика', room:'301'}]
+  },
+  '9В': {
+    monday:    [{time:'08:30', subj:'Алгебра', room:'204'},{time:'09:25', subj:'Литература', room:'112'},{time:'10:20', subj:'Физика', room:'210'},{time:'11:15', subj:'Английский', room:'118'},{time:'12:10', subj:'Химия', room:'215'},{time:'13:05', subj:'История', room:'305'}],
+    tuesday:   [{time:'08:30', subj:'Русский язык', room:'112'},{time:'09:25', subj:'Биология', room:'220'},{time:'10:20', subj:'Геометрия', room:'204'},{time:'11:15', subj:'ОБЖ', room:'301'},{time:'12:10', subj:'Физкультура', room:'спортзал'},{time:'13:05', subj:'Информатика', room:'301'}],
+    wednesday: [{time:'08:30', subj:'Английский', room:'118'},{time:'09:25', subj:'Химия', room:'215'},{time:'10:20', subj:'Математика', room:'204'},{time:'11:15', subj:'Русский язык', room:'112'},{time:'12:10', subj:'География', room:'208'},{time:'13:05', subj:'Литература', room:'112'}],
+    thursday:  [{time:'08:30', subj:'Физика', room:'210'},{time:'09:25', subj:'Алгебра', room:'204'},{time:'10:20', subj:'Обществознание', room:'305'},{time:'11:15', subj:'Биология', room:'220'},{time:'12:10', subj:'Русский язык', room:'112'},{time:'13:05', subj:'Технология', room:'мастерская'}],
+    friday:    [{time:'08:30', subj:'История', room:'305'},{time:'09:25', subj:'Геометрия', room:'204'},{time:'10:20', subj:'Английский', room:'118'},{time:'11:15', subj:'Литература', room:'112'},{time:'12:10', subj:'Физкультура', room:'спортзал'},{time:'13:05', subj:'Химия', room:'215'}]
+  }
+};
+
+const AVAILABLE_CLASSES = ['9А', '9Б', '9В'];
+let STORAGE_KEY = 'ediary_cloud_demo';
+
+
+const defaultData = {
+  user: null, theme: 'light',
+  schedules: {}, extraLessons: {},
+  gradesReset25: true, grades: [], homework: [], homeworkDone: {},
+  students: [],
+  pomo: { sessions: 0, totalMinutes: 0, lastDate: '' },
+  isDemo: false, teacherSelectedClass: '9Б'
+};
+
+let data = load();
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return structuredClone(defaultData);
+    const loaded = { ...structuredClone(defaultData), ...JSON.parse(raw) };
+    if (!loaded.gradesReset25) { loaded.grades = []; loaded.gradesReset25 = true; localStorage.setItem(STORAGE_KEY, JSON.stringify(loaded)); }
+    return loaded;
+  } catch { return structuredClone(defaultData); }
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+
+function initSchedules() {
+  if (!data.schedules || Object.keys(data.schedules).length === 0) {
+    data.schedules = {};
+    AVAILABLE_CLASSES.forEach(cls => { data.schedules[cls] = structuredClone(CLASS_SCHEDULES[cls]); });
+  }
+  if (!data.extraLessons) data.extraLessons = {};
+  AVAILABLE_CLASSES.forEach(cls => { if (!data.extraLessons[cls]) data.extraLessons[cls] = {}; });
+}
+
+function enterDemo(){initSchedules();data.user={role:'student',name:'Демо Ученик',class:'9Б',isDemo:true};save();enterApp()}
+function logout() { if (!confirm('Выйти из аккаунта?')) return; data.user = null; save(); location.reload(); }
+
+function enterApp() {
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('userName').textContent = data.user.name;
+  const roleText = data.user.role === 'parent' ? 'Родитель · '+data.user.name : data.user.role === 'teacher' ? (data.user.isAdmin ? 'Администратор' : 'Учитель') : 'Ученик · ' + (data.user.class || '');
+  document.getElementById('userRole').textContent = roleText;
+  document.getElementById('demoBanner').style.display = data.user.isDemo ? 'block' : 'none';
+  document.getElementById('scheduleSub').textContent = data.user.isDemo ? 'Пример расписания для 9Б класса' : 'Недельное расписание уроков';
+  document.getElementById('hwSub').textContent = data.user.isDemo ? 'Пример домашних заданий для 9Б класса' : 'Синхронизировано с расписанием';
+  buildNav(); applyTheme(); navigate('home');
+}
+
+const pages = {
+  home: { title: '📊 Главная', icon: '📊', roles: ['student','teacher'] },
+  schedule: { title: '📅 Расписание', icon: '📅', roles: ['student','teacher'] },
+  grades: { title: '📈 Оценки', icon: '📈', roles: ['student','teacher'] },
+  students: { title: '👥 Ученики', icon: '👥', roles: ['teacher'] },
+  homework: { title: '📝 Домашние задания', icon: '📝', roles: ['student','teacher'] },
+  achievements: { title: '🏆 Достижения', icon: '🏆', roles: ['student'] },
+  pomodoro: { title: '⏱ Таймер учёбы', icon: '⏱', roles: ['student'] }
+};
+
+function buildNav() {
+  const nav = document.getElementById('nav'); nav.innerHTML = '';
+  Object.entries(pages).forEach(([key, p]) => {
+    if (!p.roles.includes(data.user.role)) return;
+    const btn = document.createElement('button');
+    btn.className = 'nav-item'; btn.dataset.page = key;
+    btn.innerHTML = `<span class="ico">${p.icon}</span><span>${p.title.replace(/^[^\s]+\s/, '')}</span>`;
+    btn.onclick = () => navigate(key);
+    nav.appendChild(btn);
+  });
+}
+
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
+  if (page === 'home') renderHome();
+  if (page === 'schedule') renderSchedule();
+  if (page === 'grades') renderGrades();
+  if (page === 'students') renderStudents();
+  if (page === 'homework') renderHomework();
+  if (page === 'achievements') renderAchievements();
+  if (page === 'pomodoro') renderPomodoro();
+}
+
+function isTeacher() { return data.user.role === 'teacher'; }
+function isStudent() { return data.user.role === 'student'; }
+function canEditSchedule() { return isTeacher() && data.user.isAdmin; }
+function canAddExtra() { return isStudent(); }
+function canAddHw() { return isTeacher(); }
+function canAddHwForExtra() { return isStudent(); }
+
+function getCurrentClass() {
+  if (isStudent() || data.user.role==='parent') return (data.user.class || '').toUpperCase();
+  return (data.teacherSelectedClass || '9Б').toUpperCase();
+}
+function getCurrentSchedule() { const cls = getCurrentClass(); return data.schedules[cls] || structuredClone(CLASS_SCHEDULES[cls] || CLASS_SCHEDULES['9Б']); }
+function extraOwner() { return isStudent() ? JSON.stringify([getCurrentClass(), data.user.name.trim().replace(/\s+/g,' ').toLowerCase(), !!data.user.isDemo]) : null; }
+function getCurrentExtraLessons() { return isStudent() ? (data.personalExtraLessons?.[extraOwner()] || {}) : {}; }
+function visibleHomework(h) { return h.class === getCurrentClass() && (!h.isExtra || (isStudent() && h.owner === extraOwner())); }
+
+function renderClassSelector(containerId) {
+  const container = document.getElementById(containerId);
+  if (!isTeacher() || !container) { if (container) container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  container.innerHTML = AVAILABLE_CLASSES.map(cls => {
+    const active = cls === data.teacherSelectedClass ? 'active' : '';
+    return `<button class="class-btn ${active}" onclick="selectClass('${cls}')">${cls}</button>`;
+  }).join('');
+}
+
+function selectClass(cls) { data.teacherSelectedClass = cls; save(); const activePage = document.querySelector('.page.active'); if (activePage) navigate(activePage.id.replace('page-', '')); }
+
+function renderHome() {
+  const d = new Date();
+  document.getElementById('todayDate').textContent = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const nameParts = data.user.name.split(' ');
+  const firstName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+  document.getElementById('greeting').textContent = data.user.isDemo ? 'Демо-режим (ПРИМЕР)' : `Привет, ${firstName}!`;
+  renderClassSelector('teacherClassSelector');
+  const schedule = getCurrentSchedule();
+  const myGrades = isTeacher() ? data.grades.filter(g => g.studentClass === getCurrentClass()) : data.grades.filter(g => g.studentName === viewedName() && g.studentClass===getCurrentClass());
+  const avg = myGrades.length ? (myGrades.reduce((s,g) => s + +g.grade, 0) / myGrades.length).toFixed(2) : '—';
+  const classHw = data.homework.filter(visibleHomework);
+  const myDoneHw = classHw.filter(h => isHwDoneByMe(h.id)).length;
+  const level = calcLevel(myGrades.length);
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat"><div class="label">📚 Предметов</div><div class="value">${new Set(myGrades.map(g=>g.subject)).size || Object.keys(schedule).length}</div></div>
+    <div class="stat"><div class="label">⭐ Средний балл</div><div class="value">${avg}</div><div class="hint">${myGrades.length} оценок</div></div>
+    <div class="stat"><div class="label">✅ Выполнено ДЗ</div><div class="value">${classHw.length > 0 ? myDoneHw+'/'+classHw.length : '0'}</div></div>
+    <div class="stat"><div class="label">🏆 Уровень</div><div class="value">${level}</div></div>`;
+  if(isTeacher()) document.getElementById('statsGrid').innerHTML=[['Ученики',data.students.filter(s=>s.class===getCurrentClass()).length],['Выставлено оценок',myGrades.length],['Назначено заданий',classHw.length],['Уроков сегодня',(schedule[['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][d.getDay()]]||[]).length]].map(([label,value])=>`<div class="stat"><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
+  const dayKey = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'][d.getDay()];
+  const todayLessons = schedule[dayKey] || [];
+  const now = d.getHours() * 60 + d.getMinutes();
+  let nextLesson = null;
+  for (const l of todayLessons) { const [h, m] = l.time.split(':').map(Number); if (h * 60 + m > now) { nextLesson = l; break; } }
+  document.getElementById('nextLessonBlock').innerHTML = nextLesson ? `<div class="next-lesson"><div class="nl-time">${nextLesson.time}</div><div class="nl-info"><div class="nl-subj">${nextLesson.subj}</div><div class="nl-room">каб. ${nextLesson.room}</div></div></div>` : `<div class="empty"><div class="ico">🌴</div>Сегодня уроков нет</div>`;
+  document.getElementById('quickActions').innerHTML = `<div style="display:flex;flex-direction:column;gap:8px">
+    <button class="btn btn-secondary" onclick="navigate('schedule')" style="justify-content:flex-start">📅 Открыть расписание</button>
+    <button class="btn btn-secondary" onclick="navigate('homework')" style="justify-content:flex-start">📝 Посмотреть ДЗ</button>
+    ${isStudent()?`<button class="btn btn-secondary" onclick="navigate('pomodoro')">⏱ Запустить таймер</button>`:`<button class="btn btn-secondary" onclick="navigate('grades')">Открыть журнал</button>`}
+    ${canAddExtra() ? `<button class="btn btn-secondary" onclick="openExtraLessonModal()" style="justify-content:flex-start">+ Добавить доп. занятие</button>` : ''}
+  </div>`;
+}
+
+function calcLevel(n) { if (n < 5) return 'Новичок'; if (n < 15) return 'Ученик'; if (n < 30) return 'Знаток'; if (n < 60) return 'Эксперт'; return 'Мастер'; }
+
+const dayNames = { monday:'Понедельник', tuesday:'Вторник', wednesday:'Среда', thursday:'Четверг', friday:'Пятница' };
+const dayKeys = ['monday','tuesday','wednesday','thursday','friday'];
+
+function renderSchedule() {
+  document.getElementById('editScheduleBtn').style.display = canEditSchedule() ? 'inline-flex' : 'none';
+  document.getElementById('addExtraBtn').style.display = canAddExtra() ? 'inline-flex' : 'none';
+  renderClassSelector('teacherScheduleSelector');
+  const schedule = getCurrentSchedule();
+  const extras = getCurrentExtraLessons();
+  document.getElementById('scheduleGrid').innerHTML = dayKeys.map(day => {
+    const lessons = schedule[day] || [];
+    const dayExtras = extras[day] || [];
+    const all = [...lessons.map(l => ({...l, isExtra: false})), ...dayExtras.map(l => ({...l, isExtra: true}))].sort((a,b) => a.time.localeCompare(b.time));
+    return `<div class="day-col"><h3>${dayNames[day]}</h3>${all.length ? all.map(l => `<div class="lesson ${l.isExtra?'extra':''}"><div class="time">${l.time}</div><div class="subj">${l.subj}</div><div class="room">каб. ${l.room}</div>${l.isExtra ? '<div class="tag">ДОП</div>' : ''}</div>`).join('') : '<div class="lesson-empty">Нет уроков</div>'}</div>`;
+  }).join('');
+}
+
+function openScheduleEditor() {
+  if (!canEditSchedule()) { toast('Только администратор может редактировать расписание'); return; }
+  const cls = getCurrentClass();
+  let html = `<h3>✏️ Редактирование расписания (${cls})</h3>`;
+  dayKeys.forEach(day => {
+    html += `<div style="margin-bottom:16px"><label>${dayNames[day]}</label>`;
+    data.schedules[cls][day].forEach((l, i) => {
+      html += `<div style="display:grid;grid-template-columns:80px 1fr 80px 30px;gap:6px;margin-bottom:6px">
+        <input value="${l.time}" data-day="${day}" data-i="${i}" data-f="time">
+        <input value="${l.subj}" data-day="${day}" data-i="${i}" data-f="subj">
+        <input value="${l.room}" data-day="${day}" data-i="${i}" data-f="room">
+        <button class="icon-btn" onclick="removeLesson('${day}',${i})">✕</button></div>`;
+    });
+    html += `<button class="btn btn-secondary" onclick="addLesson('${day}')">+ Урок</button></div>`;
+  });
+  html += `<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveSchedule()">💾 Сохранить</button></div>`;
+  openModal(html);
+}
+
+function getNextLessonTime(day) {
+  const cls = getCurrentClass();
+  const lessons = data.schedules[cls][day];
+  if (!lessons.length) return '08:30';
+  const last = lessons[lessons.length - 1].time;
+  const [h, m] = last.split(':').map(Number);
+  let totalMin = h * 60 + m + 40 + 10;
+  return `${String(Math.floor(totalMin / 60)).padStart(2,'0')}:${String(totalMin % 60).padStart(2,'0')}`;
+}
+
+function addLesson(day) { const cls = getCurrentClass(); data.schedules[cls][day].push({ time: getNextLessonTime(day), subj: 'Новый предмет', room: '—' }); openScheduleEditor(); }
+function removeLesson(day, i) { const cls = getCurrentClass(); data.schedules[cls][day].splice(i, 1); openScheduleEditor(); }
+
+function saveSchedule() {
+  const cls = getCurrentClass();
+  document.querySelectorAll('#modal input[data-day]').forEach(inp => { const { day, i, f } = inp.dataset; data.schedules[cls][day][+i][f] = inp.value; });
+  save(); closeModal(); renderSchedule(); toast('✅ Расписание сохранено');
+}
+
+function openExtraLessonModal() {
+  if (!canAddExtra()) { toast('Только ученик может добавлять доп. занятия'); return; }
+  openModal(`<h3>+ Доп. занятие</h3>
+    <div class="field"><label>День недели</label><select id="eDay">${dayKeys.map(d => `<option value="${d}">${dayNames[d]}</option>`).join('')}</select></div>
+    <div class="field"><label>Время</label><input type="time" id="eTime" value="16:00"></div>
+    <div class="field"><label>Название</label><input id="eSubj"></div>
+    <div class="field"><label>Место</label><input id="eRoom"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveExtraLesson()">Добавить</button></div>`);
+}
+
+function saveExtraLesson() {
+  const day = document.getElementById('eDay').value, time = document.getElementById('eTime').value;
+  const subj = document.getElementById('eSubj').value.trim(), room = document.getElementById('eRoom').value.trim() || '—';
+  if (!subj) { toast('Введите название'); return; }
+  const cls = getCurrentClass();
+  if (!isStudent()) return;
+  const personal = (data.personalExtraLessons ??= {});
+  const lessons = (personal[extraOwner()] ??= {});
+  (lessons[day] ??= []).push({ time, subj, room });
+  save(); closeModal(); renderSchedule(); toast('✅ Доп. занятие добавлено');
+}
+
+let journalSubject = '';
+function renderGrades() {
+ renderClassSelector('teacherGradesSelector');
+ const content=document.getElementById('gradesContent'), cls=getCurrentClass();
+ const grades=data.grades.filter(g=>g.studentClass===cls && (isTeacher()||g.studentName===viewedName()));
+ const subjects=[...new Set([...Object.values(getCurrentSchedule()).flat().map(l=>l.subj),...grades.map(g=>g.subject)])];
+ document.getElementById('addGradeBtn').style.display=isTeacher()?'inline-flex':'none';
+ document.getElementById('gradesSub').textContent=isTeacher()?'Классный журнал · '+cls:'Ваши оценки';
+ if(!subjects.includes(journalSubject)) journalSubject=subjects[0]||'';
+ const marks=arr=>arr.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(g=>`<span class="grade-badge grade-${Number(g.grade)}" title="${escapeHtml(g.date+' '+(g.comment||''))}">${Number(g.grade)}</span>`).join(' ')||'—';
+ const avg=arr=>arr.length?(arr.reduce((a,g)=>a+Number(g.grade),0)/arr.length).toFixed(2):'—';
+ const row=(name,arr,extra='')=>`<tr><td><strong>${escapeHtml(name)}</strong></td><td class="journal-marks"><div class="journal-mark-grid">${marks(arr)} ${extra}</div></td><td>${avg(arr)}</td></tr>`;
+ let html='';
+ if(isTeacher()){
+ html=`<div class="card" style="margin-bottom:12px"><label>Предмет</label><select onchange="journalSubject=this.value;renderGrades()">${subjects.map(x=>`<option ${x===journalSubject?'selected':''}>${escapeHtml(x)}</option>`).join('')}</select><button class="btn btn-secondary" onclick="viewSubjectGrades(journalSubject)">Управление оценками</button></div>`;
+ }
+ const rows=isTeacher()?data.students.filter(x=>x.class===cls).map(x=>row(x.name,grades.filter(g=>g.studentName===x.name&&g.subject===journalSubject),`<button class="btn btn-secondary" onclick="openGradeModal(${Number(x.id)})">+</button>`)):subjects.map(x=>row(x,grades.filter(g=>g.subject===x)));
+ content.innerHTML=html+`<div class="card journal-scroll"><table><thead><tr><th>${isTeacher()?'Ученик':'Предмет'}</th><th>Оценки</th><th>Средний балл</th></tr></thead><tbody>${rows.join('')||'<tr><td colspan="3">Добавьте учеников в разделе «Ученики»</td></tr>'}</tbody></table></div>`;
+}
+
+function viewSubjectGrades(subject) {
+  const cls = getCurrentClass();
+  const list = data.grades.filter(g => g.subject === subject && g.studentClass === cls).sort((a,b)=>b.date.localeCompare(a.date));
+  let html = `<h3>${subject} — все оценки (${cls})</h3><div style="max-height:400px;overflow-y:auto">`;
+  list.forEach(g => {
+    html += `<div style="padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>${g.studentName}</strong> <span style="color:var(--text-dim);font-size:12px">${g.studentClass||''}</span>
+          <div style="font-size:12px;color:var(--text-dim)">${formatDate(g.date)}</div>
+          ${g.comment?`<div class="comment-text">💬 ${escapeHtml(g.comment)}</div>`:''}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="grade-badge grade-${g.grade}">${g.grade}</span>
+          <button class="icon-btn" onclick="deleteGrade(${g.id})">🗑</button></div></div></div>`;
+  });
+  html += `</div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Закрыть</button></div>`;
+  openModal(html);
+}
+
+function openGradeModal(studentId) {
+  if (!isTeacher()) return;
+  if (!data.students.some(s=>s.class===getCurrentClass())) { toast('Сначала добавьте учеников'); navigate('students'); return; }
+  const cls = getCurrentClass();
+  const today = new Date().toISOString().slice(0,10);
+  const schedule = getCurrentSchedule();
+  const subjects = [...new Set(Object.values(schedule).flat().map(l=>l.subj))];
+  const classStudents = data.students.filter(s => s.class === cls);
+  openModal(`<h3>Поставить оценку (${cls})</h3>
+    <div class="field"><label>Ученик</label><select id="gStudent">${classStudents.map(s=>`<option value="${s.id}" ${s.id===studentId?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}</select></div>
+    <div class="field"><label>Предмет</label><select id="gSubject">${subjects.map(s=>`<option ${s===journalSubject?'selected':''}>${escapeHtml(s)}</option>`).join('')}</select></div>
+    <div class="field"><label>Дата</label><input type="date" id="gDate" value="${today}"></div>
+    <div class="field"><label>Оценка</label><select id="gGrade"><option>5</option><option>4</option><option>3</option><option>2</option></select></div>
+    <div class="field"><label>Комментарий</label><textarea id="gComment" rows="2"></textarea></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveGrade()">Сохранить</button></div>`);
+}
+
+function saveGrade() {
+  const sid = +document.getElementById('gStudent').value;
+  const student = data.students.find(s => s.id === sid);
+  const cls = getCurrentClass();
+  data.grades.push({
+    id: Date.now(), subject: document.getElementById('gSubject').value, date: document.getElementById('gDate').value,
+    grade: +document.getElementById('gGrade').value, studentName: student.name, studentClass: cls,
+    comment: document.getElementById('gComment').value.trim()
+  });
+  save(); closeModal(); renderGrades(); toast('✅ Оценка сохранена');
+}
+
+function deleteGrade(id) { if (!confirm('Удалить оценку?')) return; data.grades = data.grades.filter(g => g.id !== id); save(); closeModal(); renderGrades(); toast('Оценка удалена'); }
+
+function renderStudents() {
+  renderClassSelector('teacherStudentsSelector');
+  const cls = getCurrentClass();
+  const classStudents = data.students.filter(s => s.class === cls);
+  const tbody = document.querySelector('#studentsTable tbody');
+  if (!classStudents.length) { tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="ico">👥</div>Список учеников пуст</div></td></tr>`; return; }
+  tbody.innerHTML = classStudents.map(s => {
+    const sg = data.grades.filter(g => g.studentName === s.name);
+    const avg = sg.length ? (sg.reduce((x,g)=>x+ +g.grade,0)/sg.length).toFixed(2) : '—';
+    return `<tr><td><strong>${s.name}</strong></td><td>${s.class}</td><td>${avg}</td><td>${sg.length}</td>
+      <td><button class="btn btn-secondary" onclick="quickGrade(${s.id})">+ Оценка</button><button class="icon-btn" onclick="deleteStudent(${s.id})">🗑</button></td></tr>`;
+  }).join('');
+}
+
+function openStudentModal() { const cls = getCurrentClass(); openModal(`<h3>Добавить ученика (${cls})</h3>
+  <div class="field"><label>Фамилия и имя</label><input id="sName"></div>
+  <div class="field"><label>Класс</label><input id="sClass" value="${cls}" readonly></div>
+  <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveStudent()">Добавить</button></div>`); }
+
+function saveStudent() { const name = document.getElementById('sName').value.trim(); const cls = getCurrentClass(); if (!name) { toast('Введите имя'); return; } data.students.push({ id: Date.now(), name, class: cls }); save(); closeModal(); renderStudents(); toast('✅ Ученик добавлен'); }
+function deleteStudent(id) { if (!confirm('Удалить ученика?')) return; data.students = data.students.filter(s => s.id !== id); save(); renderStudents(); }
+function quickGrade(sid) { openGradeModal(); setTimeout(() => { document.getElementById('gStudent').value = sid; }, 50); }
+
+function isHwDoneByMe(hwId) { return (data.homeworkDone[hwId] || []).includes(viewedName()); }
+
+function renderHomework() {
+  document.getElementById('addHwBtn').style.display = canAddHw() ? 'inline-flex' : 'none';
+  renderClassSelector('teacherHwSelector');
+  const cls = getCurrentClass();
+  const classHw = data.homework.filter(visibleHomework);
+  const schedule = getCurrentSchedule();
+  const extras = getCurrentExtraLessons();
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('hwGrid').innerHTML = dayKeys.map(day => {
+    const lessons = schedule[day] || [];
+    const dayExtras = extras[day] || [];
+    let slotsHtml = lessons.map((l, i) => { const hw = classHw.find(h => h.day === day && h.slot === i && !h.isExtra); return renderHwSlot(l.time, l.subj, hw, day, i, false, today); }).join('');
+    const extrasHtml = dayExtras.map((l, i) => { const hw = classHw.find(h => h.day === day && h.slot === i && h.isExtra); return renderHwSlot(l.time, l.subj, hw, day, i, true, today); }).join('');
+    return `<div class="day-col"><h3>${dayNames[day]}</h3>${slotsHtml || '<div class="lesson-empty">Нет уроков</div>'}${extrasHtml ? '<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)"><div style="font-size:11px;color:var(--extra);font-weight:600;margin-bottom:8px">ДОП. ЗАНЯТИЯ</div>' + extrasHtml + '</div>' : ''}</div>`;
+  }).join('');
+}
+
+function renderHwSlot(time, subject, hw, day, slot, isExtra, today) {
+  const doneByMe = hw ? isHwDoneByMe(hw.id) : false;
+  if (!hw) { const canAdd = isExtra ? canAddHwForExtra() : canAddHw(); return `<div class="hw-slot ${isExtra?'extra':''}" style="opacity:.5" ${canAdd?`onclick="openHwForSlot('${day}',${slot},'${subject.replace(/'/g,"\\'")}',${isExtra})"`:''}><div class="time">${time}</div><div class="hw-subj-name">${subject}</div><div class="hw-status">${canAdd ? '＋ Нажмите, чтобы добавить ДЗ' : 'Нет задания'}</div></div>`; }
+  const urgent = !doneByMe && hw.deadline <= today;
+  const doneCount = (data.homeworkDone[hw.id] || []).length;
+  return `<div class="hw-slot ${doneByMe?'done':''} ${isExtra?'extra':''}" onclick="toggleHw(${hw.id})">
+    <div class="hw-check ${doneByMe?'checked':''}">${doneByMe?'✓':''}</div>
+    <div class="time">${time}</div><div class="hw-subj-name">${subject}</div>
+    <div class="hw-task-text">${escapeHtml(hw.task)}</div>
+    <div class="hw-status ${urgent?'urgent':''}">📅 ${formatDate(hw.deadline)}${urgent?' · срочно!':''}${isTeacher() ? ` · выполнили: ${doneCount}` : ''}</div></div>`;
+}
+
+function openHwForSlot(day, slot, subject, isExtra) {
+  if (!(isExtra ? canAddHwForExtra() : canAddHw())) return;
+  const cls = getCurrentClass();
+  openModal(`<h3>ДЗ для ${cls}: ${subject}</h3>
+    <div class="field"><label>Задание</label><textarea id="hTask" rows="3"></textarea></div>
+    <div class="field"><label>Срок</label><input type="date" id="hDeadline" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveHwForSlot('${day}',${slot},'${subject.replace(/'/g,"\\'")}',${isExtra})">Добавить</button></div>`);
+}
+
+function saveHwForSlot(day, slot, subject, isExtra) {
+  if (!(isExtra ? canAddHwForExtra() : canAddHw())) return;
+  if (isExtra && !getCurrentExtraLessons()[day]?.[slot]) return;
+  const task = document.getElementById('hTask').value.trim();
+  if (!task) { toast('Введите задание'); return; }
+  const cls = getCurrentClass();
+  data.homework = data.homework.filter(h => !(h.day === day && h.slot === slot && h.isExtra === isExtra && visibleHomework(h)));
+  data.homework.push({ id: Date.now(), day, slot, subject, task, deadline: document.getElementById('hDeadline').value, class: cls, isExtra, ...(isExtra ? {owner: extraOwner()} : {}) });
+  save(); closeModal(); renderHomework(); toast(`✅ ДЗ добавлено для ${cls}`);
+}
+
+function toggleHw(hwId) {
+  if(!isStudent()) return;
+  const hw = data.homework.find(h => h.id === hwId); if (!hw || !visibleHomework(hw) || !isStudent()) return;
+  if (!data.homeworkDone[hwId]) data.homeworkDone[hwId] = [];
+  const list = data.homeworkDone[hwId];
+  const idx = list.indexOf(data.user.name);
+  if (idx >= 0) list.splice(idx, 1); else list.push(data.user.name);
+  save(); renderHomework();
+}
+
+function openHwModal() {
+  if (!canAddHw()) { toast('Только учитель может добавлять ДЗ'); return; }
+  const cls = getCurrentClass();
+  openModal(`<h3>Добавить задание для ${cls}</h3>
+    <div class="field"><label>День недели</label><select id="hDay" onchange="updateHwSubjects()">${dayKeys.map(d => `<option value="${d}">${dayNames[d]}</option>`).join('')}</select></div>
+    <div class="field"><label>Урок</label><select id="hSlot"></select></div>
+    <div class="field"><label>Задание</label><textarea id="hTask" rows="3"></textarea></div>
+    <div class="field"><label>Срок</label><input type="date" id="hDeadline" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="saveHwFromModal()">Добавить</button></div>`);
+  updateHwSubjects();
+}
+
+function updateHwSubjects() {
+  const day = document.getElementById('hDay').value;
+  const lessons = getCurrentSchedule()[day] || [];
+  document.getElementById('hSlot').innerHTML = lessons.map((l, i) => `<option value="${i}">${l.time} — ${l.subj}</option>`).join('') || '<option>Нет уроков</option>';
+}
+
+function saveHwFromModal() {
+  const day = document.getElementById('hDay').value, slot = +document.getElementById('hSlot').value;
+  const subject = getCurrentSchedule()[day][slot]?.subj || 'Предмет';
+  const task = document.getElementById('hTask').value.trim();
+  if (!task) { toast('Введите задание'); return; }
+  const cls = getCurrentClass();
+  data.homework = data.homework.filter(h => !(h.day === day && h.slot === slot && !h.isExtra && h.class === cls));
+  data.homework.push({ id: Date.now(), day, slot, subject, task, deadline: document.getElementById('hDeadline').value, class: cls, isExtra: false });
+  save(); closeModal(); renderHomework(); toast(`✅ ДЗ добавлено для ${cls}`);
+}
+
+const achievements = [
+  { id:'first', ico:'🎯', name:'Первый шаг', desc:'Получить первую оценку', check: g => g.length >= 1 },
+  { id:'five', ico:'⭐', name:'Пятёрка', desc:'Получить оценку 5', check: g => g.some(x => +x.grade === 5) },
+  { id:'ten', ico:'📚', name:'Десяток', desc:'Накопить 10 оценок', check: g => g.length >= 10 },
+  { id:'avg45', ico:'🏅', name:'Хорошист', desc:'Средний балл 4.5+', check: g => g.length && g.reduce((s,x)=>s+ +x.grade,0)/g.length >= 4.5 },
+  { id:'avg5', ico:'👑', name:'Отличник', desc:'Средний балл 5.0', check: g => g.length && g.reduce((s,x)=>s+ +x.grade,0)/g.length === 5 },
+  { id:'hw5', ico:'✅', name:'Трудолюбивый', desc:'Выполнить 5 заданий', check: (_,h) => h.filter(x=>x.done).length >= 5 },
+  { id:'pomo3', ico:'⏱', name:'Фокус', desc:'3 сессии Помодоро', check: () => data.pomo.sessions >= 3 },
+  { id:'thirty', ico:'🔥', name:'Тридцать', desc:'Накопить 30 оценок', check: g => g.length >= 30 }
+];
+
+function renderAchievements() {
+  const myGrades = data.grades.filter(g => g.studentName === viewedName() && g.studentClass===getCurrentClass());
+  document.getElementById('achGrid').innerHTML = achievements.map(a => {
+    const unlocked = a.check(myGrades, data.homework.filter(visibleHomework).map(h=>({...h,done:isHwDoneByMe(h.id)})));
+    return `<div class="ach ${unlocked?'unlocked':'locked'}"><div class="ach-ico">${a.ico}</div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div></div>`;
+  }).join('');
+}
+
+let pomoInterval = null, pomoSeconds = 25 * 60;
+function renderPomodoro() { updatePomoDisplay(); document.getElementById('pomoSessions').textContent = data.pomo.sessions; document.getElementById('pomoMinutes').textContent = data.pomo.totalMinutes; }
+function updatePomoDisplay() { const m = Math.floor(pomoSeconds / 60), s = pomoSeconds % 60; document.getElementById('pomoTime').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+function pomoStart() {
+  if (pomoInterval) return;
+  const today = new Date().toDateString();
+  if (data.pomo.lastDate !== today) { data.pomo.sessions = 0; data.pomo.lastDate = today; }
+  pomoInterval = setInterval(() => {
+    pomoSeconds--; updatePomoDisplay();
+    if (pomoSeconds <= 0) { clearInterval(pomoInterval); pomoInterval = null; pomoSeconds = 25 * 60; data.pomo.sessions++; data.pomo.totalMinutes += 25; save(); renderPomodoro(); toast('🎉 Сессия завершена!'); }
+  }, 1000);
+}
+function pomoPause() { clearInterval(pomoInterval); pomoInterval = null; }
+function pomoReset() { pomoPause(); pomoSeconds = 25 * 60; updatePomoDisplay(); }
+
+function openModal(html) { document.getElementById('modal').innerHTML = html; document.getElementById('modalBg').classList.add('active'); }
+function closeModal() { document.getElementById('modalBg').classList.remove('active'); }
+document.getElementById('modalBg').onclick = e => { if (e.target.id === 'modalBg') closeModal(); };
+
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
+function formatDate(iso) { if (!iso) return ''; return new Date(iso).toLocaleDateString('ru-RU', { day:'numeric', month:'short' }); }
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toggleTheme() { data.theme = data.theme === 'light' ? 'dark' : 'light'; save(); applyTheme(); }
+function applyTheme() { document.documentElement.dataset.theme = data.theme; }
+function exportData() { const blob = new Blob([JSON.stringify({...data, extraLessons: {}, personalExtraLessons: isStudent() ? {[extraOwner()]:getCurrentExtraLessons()} : {}, homework: data.homework.filter(h=>!h.isExtra || visibleHomework(h)), homeworkDone: Object.fromEntries(Object.entries(data.homeworkDone).filter(([id])=>data.homework.some(h=>String(h.id)===id&&(!h.isExtra||visibleHomework(h)))))}, null, 2)], { type:'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'diary-backup-' + new Date().toISOString().slice(0,10) + '.json'; a.click(); URL.revokeObjectURL(url); toast('💾 Данные экспортированы'); }
+
+
+window.onerror = function(msg, url, line) { console.error('Ошибка:', msg, 'строка:', line); return false; };
+
+pages.tools={title:'📊 Аналитика',icon:'📊',roles:['student']};
+pages.calendar={title:'📆 Календарь',icon:'📆',roles:['student','teacher']};
+for(const k of ['tools','calendar']){const el=document.createElement('section');el.className='page';el.id='page-'+k;document.querySelector('.main').append(el)}
+const oldNavigate=navigate; navigate=function(k){oldNavigate(k);if(k==='tools') analytics();if(k==='calendar') calendarPage()};
+function analytics(){const gs=data.grades.filter(g=>isTeacher()?g.studentClass===getCurrentClass():g.studentName===viewedName()&&g.studentClass===getCurrentClass());const subjects=[...new Set([...Object.values(getCurrentSchedule()).flat().map(l=>l.subj),...gs.map(g=>g.subject)])];document.getElementById('page-tools').innerHTML=`<h2>Аналитика успеваемости</h2><div class="card"><label>Предмет</label><select id="anSubject" onchange="calcAnalytics()">${subjects.map(x=>`<option>${escapeHtml(x)}</option>`).join('')}</select><label>Желаемый средний балл</label><input id="anTarget" type="number" min="2" max="5" step="0.1" value="4.5" oninput="calcAnalytics()"><div id="anResult"></div></div>`;window.analyticsGrades=gs;calcAnalytics()}
+function calcAnalytics(){const g=analyticsGrades.filter(x=>x.subject===document.getElementById('anSubject').value).sort((a,b)=>a.date.localeCompare(b.date));const n=g.length,sum=g.reduce((a,b)=>a+Number(b.grade),0),t=Number(document.getElementById('anTarget').value);let need=t<2||t>5?'Введите число от 2 до 5':!n?'Нет оценок':sum/n>=t?'Цель достигнута':t===5?'Недостижимо только новыми оценками':Math.ceil((t*n-sum)/(5-t))+' пятёрок';document.getElementById('anResult').innerHTML=`<p>Средний балл: ${n?(sum/n).toFixed(2):'—'}</p><p>Ориентир четвертной / годовой по текущим оценкам: ${n?Math.round(sum/n):'—'} (не официальная оценка)</p><p>До цели: ${need}</p><div style="display:flex;align-items:end;gap:5px;height:120px;overflow:auto">${g.map(x=>`<div title="${escapeHtml(x.date)}" style="min-width:25px;height:${Number(x.grade)*20}px;background:var(--accent);color:white;text-align:center">${Number(x.grade)}</div>`).join('')}</div>`}
+function calendarPage(){const events=data.events||[];const hw=data.homework.filter(visibleHomework);document.getElementById('page-calendar').innerHTML=`<h2>Учебный календарь</h2><div class="card"><label>Дата</label><input type="date" id="evDate"><label>Событие (например, ОГЭ по математике)</label><input id="evName"><button class="btn btn-primary" onclick="addEvent()">Добавить</button></div><div class="card">${[...events,...hw.map(h=>({date:h.deadline,name:'ДЗ: '+h.subject+' — '+h.task}))].sort((a,b)=>a.date.localeCompare(b.date)).map(e=>`<p>${escapeHtml(e.date)} — ${escapeHtml(e.name)} ${/ОГЭ/i.test(e.name)?' · дней: '+Math.ceil((new Date(e.date+'T00:00:00')-new Date().setHours(0,0,0,0))/86400000):''}</p>`).join('')||'Нет событий'}</div>`}
+function addEvent(){if(data.user.role==='parent')return;const date=document.getElementById('evDate').value,name=document.getElementById('evName').value.trim();if(!date||!name)return toast('Укажите дату и событие');(data.events??=[]).push({date,name});save();calendarPage()}
+const oldSchedule=renderSchedule;renderSchedule=function(){oldSchedule();if(!isStudent())return;const root=document.getElementById('scheduleGrid');dayKeys.forEach((day,i)=>{(getCurrentExtraLessons()[day]||[]).forEach((l,j)=>{const b=document.createElement('button');b.className='btn btn-secondary';b.textContent='Изменить: '+l.subj;b.onclick=()=>editExtra(day,j);root.children[i].append(b)})})};
+function editExtra(day,j){if(!isStudent()||!getCurrentExtraLessons()[day]?.[j])return;const l=getCurrentExtraLessons()[day][j];openModal(`<h3>Дополнительное занятие</h3><input id="exName" value="${escapeHtml(l.subj)}"><input id="exTime" type="time" value="${escapeHtml(l.time)}"><input id="exRoom" value="${escapeHtml(l.room)}"><div class="modal-actions"><button class="btn btn-secondary" onclick="deleteExtra('${day}',${j})">Удалить</button><button class="btn btn-primary" onclick="updateExtra('${day}',${j})">Сохранить</button></div>`)}
+function updateExtra(day,j){if(!isStudent()||!getCurrentExtraLessons()[day]?.[j])return;const subj=document.getElementById('exName').value.trim(),time=document.getElementById('exTime').value,room=document.getElementById('exRoom').value;if(!subj||!time)return;Object.assign(getCurrentExtraLessons()[day][j],{subj,time,room});save();closeModal();renderSchedule()}
+function deleteExtra(day,j){if(!isStudent()||!getCurrentExtraLessons()[day]?.[j])return;if(!confirm('Удалить занятие и его ДЗ?'))return;getCurrentExtraLessons()[day].splice(j,1);data.homework=data.homework.filter(h=>!(visibleHomework(h)&&h.day===day&&h.isExtra&&h.slot===j));data.homework.forEach(h=>{if(visibleHomework(h)&&h.day===day&&h.isExtra&&h.slot>j)h.slot--});save();closeModal();renderSchedule()}
+
+function viewedName(){return data.user.role==='parent'?data.user.childName:data.user.name}
+const roleLabels={student:'Ученик',teacher:'Учитель',parent:'Родитель',admin:'Администратор'};
+data.accounts??=[];data.invites??=[];
+// One-time local migration: reset administrator only, retain school records.
+if(!data.adminReset301){data.accounts=data.accounts.filter(a=>a.role!=='admin');if(data.user?.isAdmin)data.user=null;data.adminReset301=true;save();}
+
+function randomCode(){return Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('')}
+async function digest30(pass,salt){const key=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveBits']);const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:new TextEncoder().encode(salt),iterations:150000,hash:'SHA-256'},key,256);return Array.from(new Uint8Array(bits),x=>x.toString(16).padStart(2,'0')).join('')}
+function accountForm(title,action,extra=''){openModal(`<h3>${title}</h3>${extra}<label>Логин</label><input id="newLogin" autocomplete="username"><label>Пароль (от 8 символов)</label><input id="newPass" type="password" autocomplete="new-password"><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" onclick="${action}()">Создать</button></div>`)}
+function setup30(){if(data.accounts.some(a=>a.role==='admin'))return toast('Администратор уже создан');accountForm('Создание локального администратора','createAdmin30')}
+async function createAccount30(info){const login=document.getElementById('newLogin').value.trim().toLowerCase(),pass=document.getElementById('newPass').value;if(!/^[a-z0-9_.-]{3,32}$/.test(login)||pass.length<8||data.accounts.some(a=>a.login===login)){toast('Проверьте логин (латиница, от 3 символов) и пароль');return false}const salt=randomCode(),hash=await digest30(pass,salt);if(data.accounts.some(a=>a.login===login))return false;data.accounts.push({...info,login,salt,hash,id:randomCode()});save();return true}
+async function createAdmin30(){if(data.accounts.some(a=>a.role==='admin'))return;if(await createAccount30({role:'admin',name:'Администратор'})){await issueRecovery301();}}
+
+async function issueRecovery301(){const a=data.accounts.find(a=>a.role==='admin');const code=randomCode();a.recoverySalt=randomCode();a.recoveryHash=await digest30(code,a.recoverySalt);save();openModal(`<h3>Сохраните резервный код</h3><p>Он нужен для восстановления доступа. После использования будет заменён.</p><input readonly value="${code}" onclick="this.select()"><p>Запишите код в безопасном месте.</p><button class="btn btn-primary" onclick="closeModal()">Я сохранил код</button>`)}
+function recover301(){if(!data.accounts.some(a=>a.role==='admin'))return setup30();accountForm('Восстановление администратора','applyRecovery301','<label>Резервный код</label><input id="recovery301" autocomplete="off">')}
+async function applyRecovery301(){const a=data.accounts.find(a=>a.role==='admin'),code=document.getElementById('recovery301').value.trim(),login=document.getElementById('newLogin').value.trim().toLowerCase(),pass=document.getElementById('newPass').value;if(!a?.recoveryHash||await digest30(code,a.recoverySalt)!==a.recoveryHash)return toast('Неверный резервный код');if(!/^[a-z0-9_.-]{3,32}$/.test(login)||pass.length<8||data.accounts.some(x=>x!==a&&x.login===login))return toast('Проверьте логин и пароль');const salt=randomCode(),hash=await digest30(pass,salt);Object.assign(a,{login,salt,hash});delete a.recoveryHash;delete a.recoverySalt;data.user=null;save();await issueRecovery301()}
+
+function register30(){accountForm('Регистрация','redeem30','<label>Код приглашения</label><input id="inviteCode">')}
+async function redeem30(){const code=document.getElementById('inviteCode').value.trim();const inv=data.invites.find(i=>i.code===code&&!i.used&&!i.revoked);if(!inv)return toast('Код недействителен');if(inv.busy)return;inv.busy=true;try{if(await createAccount30({role:inv.role,name:inv.name,class:inv.class,childId:inv.childId})){inv.used=true;if(inv.role==='student'&&!data.students.some(s=>s.name===inv.name&&s.class===inv.class))data.students.push({id:Date.now(),name:inv.name,class:inv.class});save();closeModal();toast('Аккаунт создан. Войдите')}}finally{delete inv.busy;save()}}
+document.getElementById('login30').onsubmit=async e=>{e.preventDefault();const a=data.accounts.find(x=>x.login===document.getElementById('loginName').value.trim().toLowerCase()&&!x.blocked);if(!a||await digest30(document.getElementById('loginPass').value,a.salt)!==a.hash)return toast('Неверный логин или пароль');const child=data.accounts.find(x=>x.id===a.childId&&x.role==='student'&&!x.blocked);if(a.role==='parent'&&!child)return toast('Нет доступной привязки');data.user={id:a.id,name:a.name,role:a.role==='admin'?'teacher':a.role,isAdmin:a.role==='admin',class:child?.class||a.class,childName:child?.name};initSchedules();save();enterApp()};
+for(const k of ['home','schedule','grades','homework','tools'])pages[k].roles.push('parent');pages.accounts={title:'🔑 Аккаунты',icon:'🔑',roles:['teacher']};const ap=document.createElement('section');ap.id='page-accounts';ap.className='page';document.querySelector('.main').append(ap);
+const nav30=buildNav;buildNav=function(){nav30();if(!data.user.isAdmin)document.querySelector('[data-page="accounts"]')?.remove()};
+const go30=navigate;navigate=function(k){if(k==='accounts'&&!data.user.isAdmin)return;if(!pages[k]?.roles.includes(data.user.role))return;go30(k);if(k==='accounts')accounts30();if(k==='home'&&data.user.role==='parent')document.getElementById('greeting').textContent='Ребёнок: '+viewedName()};
+function accounts30(){if(!data.user.isAdmin)return;ap.innerHTML=`<h2>Управление аккаунтами</h2><div class="card"><label>Роль</label><select id="invRole" onchange="inviteFields30()"><option value="student">Ученик</option><option value="teacher">Учитель</option><option value="parent">Родитель</option></select><label>Фамилия и имя</label><input id="invName"><div id="invFields"></div><button class="btn btn-primary" onclick="invite30()">Создать приглашение</button></div><div class="card"><h3>Приглашения</h3>${data.invites.map((i,n)=>`<p>${escapeHtml(i.name)} · ${roleLabels[i.role]} · ${i.used?'Использован':i.revoked?'Отменён':escapeHtml(i.code)} ${!i.used&&!i.revoked?`<button class="btn btn-secondary" onclick="revoke30(${n})">Отменить</button>`:''}</p>`).join('')||'Нет приглашений'}</div><div class="card"><h3>Аккаунты</h3>${data.accounts.map((a,n)=>`<p>${escapeHtml(a.name)} · ${roleLabels[a.role]} · ${escapeHtml(a.login)} ${a.role!=='admin'?`<button class="btn btn-secondary" onclick="block30(${n})">${a.blocked?'Разблокировать':'Заблокировать'}</button>`:''}</p>`).join('')}</div>`;inviteFields30()}
+function inviteFields30(){const role=document.getElementById('invRole').value;document.getElementById('invFields').innerHTML=role==='student'?'<label>Класс</label><select id="invClass">'+AVAILABLE_CLASSES.map(c=>`<option>${c}</option>`).join('')+'</select>':role==='parent'?'<label>Ребёнок</label><select id="invChild">'+data.accounts.filter(a=>a.role==='student'&&!a.blocked).map(a=>`<option value="${a.id}">${escapeHtml(a.name)} · ${escapeHtml(a.class)}</option>`).join('')+'</select>':''}
+function invite30(){if(!data.user.isAdmin)return;const role=document.getElementById('invRole').value,name=document.getElementById('invName').value.trim(),cls=document.getElementById('invClass')?.value,childId=document.getElementById('invChild')?.value;if(!name||role==='parent'&&!childId)return toast('Заполните поля');if(role==='student'&&data.accounts.some(a=>a.role==='student'&&a.name===name&&a.class===cls))return toast('Ученик уже зарегистрирован');data.invites.push({role,name,class:cls,childId,code:randomCode()});save();accounts30()}
+function revoke30(n){if(data.user.isAdmin){data.invites[n].revoked=true;save();accounts30()}}
+function block30(n){if(data.user.isAdmin&&data.accounts[n].role!=='admin'){data.accounts[n].blocked=!data.accounts[n].blocked;save();accounts30()}}
+// Do not export account hashes or other pupils' records in this local prototype.
+document.querySelector('[onclick="exportData()"]')?.remove();
+const cloud = window.supabase?.createClient('https://syhyxaooeozhsbjilgjn.supabase.co', 'sb_publishable_iO2Dfzu5bY36rSba6kqQhg_rSLXXHqW');
+// Local prototype account management is not available in the cloud build.
+delete pages.accounts;
+async function cloudLogin(){
+ if(!cloud) return toast('Не удалось загрузить Supabase');
+ const {data:sessionData,error}=await cloud.auth.signInWithPassword({email:document.getElementById('loginName').value.trim().toLowerCase()+'@diary.invalid',password:document.getElementById('loginPass').value});
+ if(error)return toast('Не удалось войти: '+error.message);
+ const {data:p,error:pe}=await cloud.from('profiles').select('id,username,full_name,role,class_name,blocked').eq('id',sessionData.user.id).single();
+ if(pe||!p||p.blocked||!['admin','teacher','student'].includes(p.role)){await cloud.auth.signOut();return toast('Профиль недоступен');}
+ STORAGE_KEY='ediary_cloud_local_'+p.id;data=load();data.user={id:p.id,name:p.full_name,role:p.role==='admin'?'teacher':p.role,isAdmin:p.role==='admin',class:(p.class_name||'').replace(/A/g,'А').replace(/B/g,'Б').replace(/C/g,'В')};initSchedules();save();enterApp();
+}
+document.getElementById('login30').onsubmit=async e=>{e.preventDefault();try{await cloudLogin()}catch(e){toast('Ошибка подключения: '+e.message)}};
+redeem30=async function(){try{if(!cloud)return toast('Supabase недоступен');const username=document.getElementById('newLogin').value.trim().toLowerCase(),password=document.getElementById('newPass').value,code=document.getElementById('inviteCode').value.trim();const {data:r,error}=await cloud.functions.invoke('register-user',{body:{username,password,code}});if(error||!r?.success){let msg=r?.error||error?.message;try{msg=(await error.context.json()).error||msg}catch{}return toast(msg||'Ошибка регистрации')}closeModal();toast('Аккаунт создан. Войдите')}catch(e){toast(e.message)}};
+logout=async function(){if(!confirm('Выйти из аккаунта?'))return;await cloud?.auth.signOut();data.user=null;save();location.reload()};
+data.user=null;
+
+
+</script>
+</body>
+</html>
