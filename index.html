@@ -595,12 +595,23 @@ function renderClassSelector(containerId) {
 
 function selectClass(cls) { data.teacherSelectedClass = cls; save(); const activePage = document.querySelector('.page.active'); if (activePage) navigate(activePage.id.replace('page-', '')); }
 
+function greeting34(user) {
+  if (user.isAdmin) return 'Здравствуйте, администратор!';
+  const parts = String(user.name || '').trim().split(/\s+/).filter(Boolean);
+  const patronymic = parts.find(p => /(?:ович|евич|ич|овна|евна|ична|инична)$/i.test(p));
+  const known = /^(?:екатерина|александр|александра|алексей|анна|мария|иван|иванна|пётр|петр|дмитрий|сергей|ольга|елена|наталья|наталия|татьяна|ирина|светлана|любовь|владимир|андрей|михаил|никита|артём|артем|максим|дарья|софия|софья|полина|виктория|настя|анастасия|кирилл|данил|даниил|егор|роман|павел|юлия|юрий|валентина|галина|надежда|вера|оксана|кристина|алина|арина|варвара|тимофей|матвей|илья|марина|виктор|николай|константин|денис|антон|борис|василий|геннадий|людмила|валерий|виталий|евгений|евгения|алёна|алена)$/i;
+  const rest = parts.filter(p => p !== patronymic);
+  const candidates = rest.filter(p => known.test(p));
+  const first = candidates.length === 1 ? candidates[0] : rest.length === 1 ? rest[0] : rest.filter(p => !/(?:ов|ев|ёв|ин|ын|ова|ева|ёва|ина|ына|ский|ская|цкий|цкая|енко|ук|юк|их|ых)$/i.test(p)).length === 1 ? rest.find(p => !/(?:ов|ев|ёв|ин|ын|ова|ева|ёва|ина|ына|ский|ская|цкий|цкая|енко|ук|юк|их|ых)$/i.test(p)) : '';
+  const formal = user.role !== 'student';
+  const name = first ? [first, formal ? patronymic : null].filter(Boolean).join(' ') : parts.join(' ');
+  return (formal ? 'Здравствуйте' : 'Привет') + (name ? ', '+name : '') + '!';
+}
+
 function renderHome() {
   const d = new Date();
   document.getElementById('todayDate').textContent = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-  const nameParts = data.user.name.split(' ');
-  const firstName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
-  document.getElementById('greeting').textContent = data.user.isDemo ? 'Демо-режим (ПРИМЕР)' : `Привет, ${firstName}!`;
+  document.getElementById('greeting').textContent = data.user.isDemo ? 'Демо-режим (ПРИМЕР)' : greeting34(data.user);
   renderClassSelector('teacherClassSelector');
   const schedule = getCurrentSchedule();
   const myGrades = isTeacher() ? data.grades.filter(g => g.studentClass === getCurrentClass()) : data.grades.filter(g => g.studentName === viewedName() && g.studentClass===getCurrentClass());
@@ -972,7 +983,7 @@ async function redeem30(){const code=document.getElementById('inviteCode').value
 document.getElementById('login30').onsubmit=async e=>{e.preventDefault();const a=data.accounts.find(x=>x.login===document.getElementById('loginName').value.trim().toLowerCase()&&!x.blocked);if(!a||await digest30(document.getElementById('loginPass').value,a.salt)!==a.hash)return toast('Неверный логин или пароль');const child=data.accounts.find(x=>x.id===a.childId&&x.role==='student'&&!x.blocked);if(a.role==='parent'&&!child)return toast('Нет доступной привязки');data.user={id:a.id,name:a.name,role:a.role==='admin'?'teacher':a.role,isAdmin:a.role==='admin',class:child?.class||a.class,childName:child?.name};initSchedules();save();enterApp()};
 for(const k of ['home','schedule','grades','homework','tools'])pages[k].roles.push('parent');pages.accounts={title:'🔑 Аккаунты',icon:'🔑',roles:['teacher']};const ap=document.createElement('section');ap.id='page-accounts';ap.className='page';document.querySelector('.main').append(ap);
 const nav30=buildNav;buildNav=function(){nav30();if(!data.user.isAdmin)document.querySelector('[data-page="accounts"]')?.remove()};
-const go30=navigate;navigate=function(k){if(k==='accounts'&&!data.user.isAdmin)return;if(!pages[k]?.roles.includes(data.user.role))return;go30(k);if(k==='accounts')accounts30();if(k==='home'&&data.user.role==='parent')document.getElementById('greeting').textContent='Ребёнок: '+viewedName()};
+const go30=navigate;navigate=function(k){if(k==='accounts'&&!data.user.isAdmin)return;if(!pages[k]?.roles.includes(data.user.role))return;go30(k);if(k==='accounts')accounts30();if(k==='home'&&data.user.role==='parent')document.getElementById('greeting').textContent=greeting34(data.user)};
 function accounts30(){if(!data.user.isAdmin)return;ap.innerHTML=`<h2>Управление аккаунтами</h2><div class="card"><label>Роль</label><select id="invRole" onchange="inviteFields30()"><option value="student">Ученик</option><option value="teacher">Учитель</option><option value="parent">Родитель</option></select><label>Фамилия и имя</label><input id="invName"><div id="invFields"></div><button class="btn btn-primary" onclick="invite30()">Создать приглашение</button></div><div class="card"><h3>Приглашения</h3>${data.invites.map((i,n)=>`<p>${escapeHtml(i.name)} · ${roleLabels[i.role]} · ${i.used?'Использован':i.revoked?'Отменён':escapeHtml(i.code)} ${!i.used&&!i.revoked?`<button class="btn btn-secondary" onclick="revoke30(${n})">Отменить</button>`:''}</p>`).join('')||'Нет приглашений'}</div><div class="card"><h3>Аккаунты</h3>${data.accounts.map((a,n)=>`<p>${escapeHtml(a.name)} · ${roleLabels[a.role]} · ${escapeHtml(a.login)} ${a.role!=='admin'?`<button class="btn btn-secondary" onclick="block30(${n})">${a.blocked?'Разблокировать':'Заблокировать'}</button>`:''}</p>`).join('')}</div>`;inviteFields30()}
 function inviteFields30(){const role=document.getElementById('invRole').value;document.getElementById('invFields').innerHTML=role==='student'?'<label>Класс</label><select id="invClass">'+AVAILABLE_CLASSES.map(c=>`<option>${c}</option>`).join('')+'</select>':role==='parent'?'<label>Ребёнок</label><select id="invChild">'+data.accounts.filter(a=>a.role==='student'&&!a.blocked).map(a=>`<option value="${a.id}">${escapeHtml(a.name)} · ${escapeHtml(a.class)}</option>`).join('')+'</select>':''}
 function invite30(){if(!data.user.isAdmin)return;const role=document.getElementById('invRole').value,name=document.getElementById('invName').value.trim(),cls=document.getElementById('invClass')?.value,childId=document.getElementById('invChild')?.value;if(!name||role==='parent'&&!childId)return toast('Заполните поля');if(role==='student'&&data.accounts.some(a=>a.role==='student'&&a.name===name&&a.class===cls))return toast('Ученик уже зарегистрирован');data.invites.push({role,name,class:cls,childId,code:randomCode()});save();accounts30()}
